@@ -3,7 +3,7 @@
 A modular quantitative research platform for studying **multi-asset portfolio construction, diversification, risk allocation, estimation uncertainty, robustness, and out-of-sample behavior**.
 
 ![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-simulation%20engine-FF4B4B?logo=streamlit&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-research%20platform-FF4B4B?logo=streamlit&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-pytest-0A9EDC?logo=pytest&logoColor=white)
 [![License](https://img.shields.io/badge/license-MIT-2EA44F)](LICENSE)
 
@@ -208,7 +208,7 @@ The report can be exported as Markdown for further review or documentation.
 Quantitative calculations are kept outside the Streamlit interface so that the research engine can be tested and reused independently of the presentation layer.
 
 ```text
-portfolio-construction-risk-lab/
+Portfolio-Construction-and-Risk-Lab/
 ├── app/
 │   └── main.py
 ├── src/
@@ -235,8 +235,8 @@ portfolio-construction-risk-lab/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/enesozs/portfolio-construction-risk-lab.git
-cd portfolio-construction-risk-lab
+git clone https://github.com/enesozs/Portfolio-Construction-and-Risk-Lab.git
+cd Portfolio-Construction-and-Risk-Lab
 ```
 
 ### 2. Create and activate a virtual environment
