@@ -7,6 +7,8 @@ A modular quantitative research platform for studying **multi-asset portfolio co
 ![Tests](https://img.shields.io/badge/tests-pytest-0A9EDC?logo=pytest&logoColor=white)
 [![License](https://img.shields.io/badge/license-MIT-2EA44F)](LICENSE)
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://portfolio-construction-and-risk-lab.streamlit.app)
+
 Rather than treating an optimizer's output as a definitive answer, the project asks a broader question:
 
 > **How should capital be allocated across assets, where does the resulting risk come from, and how much confidence should we place in an allocation built from uncertain historical estimates?**
