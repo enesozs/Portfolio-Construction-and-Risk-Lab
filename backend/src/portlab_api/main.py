@@ -11,7 +11,7 @@ from pathlib import Path
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from .routes import attribution, construction, meta, report, risk, universe, validation
+from .routes import attribution, construction, dynamic, meta, report, risk, universe, validation
 
 app = FastAPI(title="Portfolio Lab API", version="0.2.0")
 
@@ -21,6 +21,7 @@ api.include_router(universe.router)
 api.include_router(construction.router)
 api.include_router(risk.router)
 api.include_router(validation.router)
+api.include_router(dynamic.router)
 api.include_router(attribution.router)
 api.include_router(report.router)
 

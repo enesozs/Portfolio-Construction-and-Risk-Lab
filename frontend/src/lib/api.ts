@@ -34,6 +34,10 @@ export type BenchmarkResponse = Schemas['BenchmarkResponse']
 export type FactorResponse = Schemas['FactorResponse']
 export type ReportResponse = Schemas['ReportResponse']
 export type MetaResponse = Schemas['MetaResponse']
+export type SignalsResponse = Schemas['SignalsResponse']
+export type SignalOut = Schemas['SignalOut']
+export type DynamicRequest = Schemas['DynamicRequest']
+export type DynamicResponse = Schemas['DynamicResponse']
 
 /** Page-specific parameters sent beside the shared universe. */
 type Params<T> = Omit<T, 'universe'>
@@ -107,4 +111,7 @@ export const api = {
   benchmark: endpoint<Schemas['BenchmarkRequest'], BenchmarkResponse>('/attribution/benchmark'),
   factors: endpoint<Schemas['PortfolioRequest'], FactorResponse>('/attribution/factors'),
   report: endpoint<Schemas['PortfolioRequest'], ReportResponse>('/report'),
+  signals: (signal?: AbortSignal) =>
+    request<SignalsResponse>('/dynamic/signals', undefined, signal),
+  dynamic: endpoint<DynamicRequest, DynamicResponse>('/dynamic/backtest'),
 }

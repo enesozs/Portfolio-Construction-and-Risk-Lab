@@ -327,6 +327,40 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/dynamic/signals': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Signals */
+    get: operations['signals_api_dynamic_signals_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/dynamic/backtest': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Backtest */
+    post: operations['backtest_api_dynamic_backtest_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/attribution/benchmark': {
     parameters: {
       query?: never
@@ -694,6 +728,23 @@ export interface components {
       wealth?: components['schemas']['TimeSeries'] | null
       drawdown?: components['schemas']['TimeSeries'] | null
     }
+    /** CurrentSignal */
+    CurrentSignal: {
+      /** Date */
+      date: string
+      /** Target */
+      target: {
+        [key: string]: number
+      }
+      /** On */
+      on: {
+        [key: string]: boolean
+      }
+      /** Score */
+      score: {
+        [key: string]: number | null
+      }
+    }
     /** DecompositionResponse */
     DecompositionResponse: {
       /** Volatility */
@@ -755,6 +806,126 @@ export interface components {
       min_eigenvalue: number
       /** Distance Vs Sample */
       distance_vs_sample: number
+    }
+    /** DynamicRequest */
+    DynamicRequest: {
+      universe: components['schemas']['UniverseIn']
+      /**
+       * Method
+       * @default filter
+       * @enum {string}
+       */
+      method: 'filter' | 'top_k' | 'tilt' | 'black_litterman'
+      /**
+       * Timing
+       * @default trend
+       */
+      timing: string | null
+      /** Timing Params */
+      timing_params?: {
+        [key: string]: number
+      }
+      /** Ranking */
+      ranking?: string | null
+      /** Ranking Params */
+      ranking_params?: {
+        [key: string]: number
+      }
+      /**
+       * Base
+       * @default equal_weight
+       */
+      base:
+        | (
+            | 'equal_weight'
+            | 'min_variance'
+            | 'max_sharpe'
+            | 'risk_parity'
+            | 'max_diversification'
+            | 'min_cvar'
+            | 'kelly'
+            | 'resampled'
+            | 'hrp'
+            | 'herc'
+            | 'nco'
+          )
+        | 'custom'
+      /** Base Weights */
+      base_weights?: {
+        [key: string]: number
+      } | null
+      /**
+       * Off To Cash
+       * @default true
+       */
+      off_to_cash: boolean
+      /**
+       * Top K
+       * @default 3
+       */
+      top_k: number
+      /**
+       * Tilt Strength
+       * @default 0.5
+       */
+      tilt_strength: number
+      /**
+       * View Confidence
+       * @default 0.5
+       */
+      view_confidence: number
+      /**
+       * Rebalance Every
+       * @default 21
+       */
+      rebalance_every: number
+      /**
+       * Lookback
+       * @default 252
+       */
+      lookback: number
+      /**
+       * Cost Bps
+       * @default 5
+       */
+      cost_bps: number
+    }
+    /** DynamicResponse */
+    DynamicResponse: {
+      /** Start */
+      start: string
+      /** End */
+      end: string
+      strategy: components['schemas']['TimeSeries']
+      base_rebalanced: components['schemas']['TimeSeries']
+      buy_and_hold: components['schemas']['TimeSeries']
+      cash: components['schemas']['TimeSeries']
+      strategy_stats: components['schemas']['StrategyStats']
+      base_stats: components['schemas']['StrategyStats']
+      hold_stats: components['schemas']['StrategyStats']
+      strategy_drawdown: components['schemas']['TimeSeries']
+      base_drawdown: components['schemas']['TimeSeries']
+      /** Holdings */
+      holdings: {
+        [key: string]: components['schemas']['TimeSeries']
+      }
+      /** Decision Dates */
+      decision_dates: string[]
+      /** Signal On */
+      signal_on: {
+        [key: string]: boolean[]
+      }
+      /** Active Return */
+      active_return: number
+      /** Tracking Error */
+      tracking_error: number
+      /** Probability Beats Base */
+      probability_beats_base: number | null
+      /** Deflated Probability */
+      deflated_probability: number | null
+      /** Trials */
+      trials: components['schemas']['Trial'][]
+      current: components['schemas']['CurrentSignal']
     }
     /** Estimate */
     Estimate: {
@@ -891,6 +1062,21 @@ export interface components {
       b: string
       /** Value */
       value: number
+    }
+    /** ParamOut */
+    ParamOut: {
+      /** Name */
+      name: string
+      /** Label */
+      label: string
+      /** Default */
+      default: number
+      /** Min */
+      min: number
+      /** Max */
+      max: number
+      /** Integer */
+      integer: boolean
     }
     /** Performance */
     Performance: {
@@ -1130,6 +1316,27 @@ export interface components {
         [key: string]: number
       }
     }
+    /** SignalOut */
+    SignalOut: {
+      /** Key */
+      key: string
+      /** Label */
+      label: string
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: 'timing' | 'ranking'
+      /** Idea */
+      idea: string
+      /** Params */
+      params: components['schemas']['ParamOut'][]
+    }
+    /** SignalsResponse */
+    SignalsResponse: {
+      /** Signals */
+      signals: components['schemas']['SignalOut'][]
+    }
     /** SimulationRequest */
     SimulationRequest: {
       universe: components['schemas']['UniverseIn']
@@ -1209,6 +1416,18 @@ export interface components {
       metrics: {
         [key: string]: components['schemas']['Estimate']
       }
+    }
+    /** StrategyStats */
+    StrategyStats: {
+      performance: components['schemas']['Performance']
+      /** Average Turnover */
+      average_turnover: number
+      /** Total Cost */
+      total_cost: number
+      /** Rebalances */
+      rebalances: number
+      /** Average Cash */
+      average_cash: number
     }
     /** StressRequest */
     StressRequest: {
@@ -1299,6 +1518,19 @@ export interface components {
       dates: string[]
       /** Values */
       values: number[]
+    }
+    /** Trial */
+    Trial: {
+      /** Label */
+      label: string
+      /** Sharpe */
+      sharpe: number | null
+      /** Active Sharpe */
+      active_sharpe: number | null
+      /** Annual Return */
+      annual_return: number
+      /** Chosen */
+      chosen: boolean
     }
     /** TurnoverRequest */
     TurnoverRequest: {
@@ -2155,6 +2387,59 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['BootstrapResponse']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  signals_api_dynamic_signals_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SignalsResponse']
+        }
+      }
+    }
+  }
+  backtest_api_dynamic_backtest_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DynamicRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DynamicResponse']
         }
       }
       /** @description Validation Error */

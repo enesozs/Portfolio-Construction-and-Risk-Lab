@@ -27,7 +27,7 @@ The project is built around one question:
 ## Contents
 
 - [Application overview](#application-overview)
-- Areas: [Universe](#universe) · [Construct](#construct) · [Risk](#risk) ·
+- Areas: [Universe](#universe) · [Construct](#construct) · [Dynamic](#dynamic) · [Risk](#risk) ·
   [Validate](#validate) · [Attribution](#attribution) · [Report](#report)
 - [Correctness](#correctness)
 - [Architecture](#architecture)
@@ -97,6 +97,33 @@ explanation.
 - **Robust & turnover:** a penalty for uncertain means, and turnover-aware rebalancing from
   the current portfolio.
 - **Risk budgets:** choose each asset's share of risk instead of capital.
+
+## Dynamic
+
+<p align="center">
+  <img src="docs/screenshots/dynamic.jpg" alt="Dynamic allocation: dual momentum against the rebalanced base, holdings, signal strip, robustness grid and today's target" width="95%">
+</p>
+
+Keep the assets you chose, but let signals decide how much of each to hold, and when to step
+into cash.
+
+- **Signals,** computed per asset using only past closes:
+  - timing filters from project 02: trend, SMA and EMA crossovers, MACD, Donchian breakout,
+    absolute momentum vs T-bills, and a trend + volatility regime;
+  - cross-sectional ranks: 12-1 momentum, volatility-adjusted momentum, short-term reversal,
+    low volatility.
+- **Signals → weights,** around a base portfolio (your own weights or any allocator):
+  - **filter:** out-of-signal assets go to cash or to the rest;
+  - **top-k rotation:** with a timing filter, empty slots are held in cash, as in dual momentum;
+  - **tilt:** weights lean toward high scores;
+  - **Black–Litterman views:** scores become return views, weighed against risk by max Sharpe.
+- **Honest evaluation:**
+  - The strategy runs on the shared engine (costs, drift, cash).
+  - It is compared with the same base **rebalanced on the same schedule without signals**, so
+    the gap is the signals' contribution, plus buy-and-hold and cash.
+  - The probability of beating the base is deflated for the neighbouring configurations tried,
+    and a robustness grid shows those neighbours.
+  - The page ends with today's signals and target weights.
 
 ## Risk
 
@@ -180,6 +207,9 @@ pins it to a concrete number:
   - Under caps, no random feasible portfolio beats them.
   - Risk parity solves Spinu's convex problem.
   - NCO reproduces global minimum variance exactly when clusters are independent.
+- **No look-ahead in signals:** every signal is tested to give identical values on data truncated
+  at any day. An always-on filter reproduces the rebalanced base exactly, and an all-off filter
+  earns exactly cash.
 - **Ledoit–Wolf shrinkage** is implemented directly and matches scikit-learn to 1e-19.
 - **Monte Carlo errors** are reported for every simulated statistic (batch means), and the
   simulated mean matches the model's analytic mean within that error.

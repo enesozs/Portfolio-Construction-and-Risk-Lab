@@ -31,19 +31,21 @@ It is an **educational research tool**, not investment advice. Priorities, in or
 
 ## 2. Current state (2026-11-03)
 
-- **Steps 1–3 are done.**
-- **Six areas, 16 pages**:
+- **Steps 1–4 are done.**
+- **Seven areas, 17 pages**:
   - Universe: overview.
   - Construct: portfolios, estimators, Black–Litterman, tail risk, robust & turnover, risk budgets.
+  - Dynamic: dynamic allocation.
   - Risk: decomposition, stress & scenarios, crisis replay, Monte Carlo.
   - Validate: walk-forward, rebalancing, stability.
   - Attribution.
   - Report.
 - **11 allocators** on one constraint set (universe-level, edited in the universe dialog).
-- **Next: step 4, dynamic (tactical) allocation.**
-  - A new area "Dynamic".
-  - Library: `portlab/signals/` (timing filters ported from 02 + cross-sectional ranks) and
-    `portlab/dynamic.py` (signal → target weights, run on `backtest.run_backtest` with cash).
+- **Next: step 5.**
+  - Risk models: t-copula and regime-switching Monte Carlo; component VaR/ES; VaR backtests.
+  - Covariance denoising.
+  - A Fama–French factor lab.
+  - PBO/CPCV.
 
 ## 3. Architecture
 
@@ -65,7 +67,8 @@ frontend/
   src/lib/api.ts          typed client; types generated into src/lib/api-types.ts
   src/components/charts/  echart wrapper, theme (palette), TimeChart, WeightBars,
                           AllocationStack, CorrelationHeatmap, LinesChart, HistogramChart
-e2e/smoke.py              every page, no console/API errors, universe editor interactions
+e2e/smoke.py              every page, no console/API errors, universe editor, constraints, a
+                          dynamic preset (settle() counts in-flight fetches)
 ```
 
 Same stack and conventions as 05 (Derivatives Pricing Lab) and 06 (Tessera). Copy patterns from there.
@@ -98,6 +101,11 @@ Same stack and conventions as 05 (Derivatives Pricing Lab) and 06 (Tessera). Cop
   - Regenerate it with the script in §6.
 - **Monte Carlo:** asset-level (normal / joint Student-t / block bootstrap). Every headline number has
   a batch-means standard error.
+- **Signals** are computed on each asset's *full* price history (`load_prices`), so long windows
+  are ready at the sample start. A value on day t uses closes ≤ t (tested for every signal by
+  truncation).
+- **Dynamic results** are always judged against the base rebalanced on the same schedule; the
+  headline probability is deflated for the grid. Keep it that way.
 - **Frontend data:** pages query only through `useLab(name, api.x, params)`.
   - It adds the shared universe and debounces the *serialised* params, so inline object literals
     are fine.
@@ -159,8 +167,24 @@ Six steps, one commit each (the owner allows committing at milestones without as
    - The registry flags `respects_constraints`; the UI marks HRP/HERC/NCO/equal weight as
      "unconstrained" when constraints are active.
    - The allocation stack draws shorts left of 0%.
-4. **Dynamic (tactical) allocation.** The user picks the universe; the system moves weight between
-   those assets *and cash* based on signals.
+4. **Dynamic (tactical) allocation. Done.** The user picks the universe; the system moves weight
+   between those assets *and cash* based on signals.
+   - Library:
+     - `signals.py`: a catalogue of 7 timing and 4 ranking signals, with parameter ranges and a
+       "primary" window for the grid.
+     - `dynamic.py`: `DynamicSpec`, `target_weights`, `run_dynamic`.
+     - `validation/sharpe_tests.py`: PSR and DSR, ported from 02.
+   - Evaluation:
+     - Strategy vs the same base rebalanced on the same schedule (the signals' contribution),
+       buy-and-hold and cash.
+     - PSR of the daily active return, and DSR of it over a ×0.5–×2 grid of the main window
+       (± top-k).
+     - Base weights are cached per (day, subset) across the strategy, benchmark and grid.
+   - API: `/dynamic/signals` (catalogue) and `/dynamic/backtest`.
+   - UI (`/dynamic`): presets, base (allocator or custom weights), method, signal pickers built
+     from the catalogue, verdict tiles, a hindsight caveat, growth/drawdown/holdings, signal
+     strip, side-by-side table, robustness grid, today's target.
+   - Original plan, kept for reference:
    - Signals: timing filters ported from 02 (MA/EMA cross, MACD, Donchian, regime filter, …) and
      cross-sectional ranks (12-1 momentum, vol-adjusted momentum, short-term reversal).
    - Signal → weights methods: tilt around base weights, top-k rotation, signals as Black–Litterman

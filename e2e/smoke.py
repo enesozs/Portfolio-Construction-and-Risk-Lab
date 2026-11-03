@@ -20,6 +20,7 @@ PAGES = [
     ("/construct/tail-risk", None),
     ("/construct/robust", None),
     ("/construct/risk-budget", None),
+    ("/dynamic", "Dynamic allocation"),
     ("/risk", None),
     ("/risk/stress", None),
     ("/risk/crises", None),
@@ -39,9 +40,13 @@ def shot(page: Page, name: str) -> None:
 
 
 def settle(page: Page) -> None:
-    """Wait for the debounced queries to fire and every request to finish."""
-    page.wait_for_timeout(600)
-    page.wait_for_load_state("networkidle")
+    """Wait for the debounced queries to fire and every API request to finish.
+
+    (`wait_for_load_state("networkidle")` returns at once after the first load, so it cannot
+    see requests that start later.)
+    """
+    page.wait_for_timeout(700)
+    page.wait_for_function("() => (window.__portlabPending ?? 0) === 0", timeout=60_000)
 
 
 def main() -> int:
@@ -50,6 +55,15 @@ def main() -> int:
         browser = p.chromium.launch(headless=True, channel="chrome")
         page = browser.new_page(viewport={"width": 1440, "height": 1000}, reduced_motion="reduce")
         page.add_init_script("localStorage.clear()")
+        # Count in-flight /api requests so settle() can wait for every one, however late it starts.
+        page.add_init_script("""
+            window.__portlabPending = 0;
+            const original = window.fetch;
+            window.fetch = async (...args) => {
+                window.__portlabPending++;
+                try { return await original(...args); } finally { window.__portlabPending--; }
+            };
+        """)
 
         def on_console(message: ConsoleMessage) -> None:
             if message.type == "error":
@@ -97,6 +111,15 @@ def main() -> int:
         expect(page.get_by_text("long-short (≤20% short, 1.6× gross)")).to_be_visible()
         expect(page.get_by_text("unconstrained").first).to_be_visible()
         shot(page, "construct_long_short")
+
+        # Dynamic allocation: a preset runs a ranking strategy end to end.
+        page.get_by_role("link", name="Dynamic").first.click()
+        settle(page)
+        page.get_by_role("button", name="Dual momentum (top 3)").click()
+        settle(page)
+        expect(page.get_by_text("deflated for 15 variants")).to_be_visible()
+        expect(page.get_by_role("columnheader", name="Score")).to_be_visible()
+        shot(page, "dynamic_dual_momentum")
 
         # Bad input is reported, not crashed on.
         page.get_by_role("button", name="Edit universe").click()

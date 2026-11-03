@@ -44,6 +44,11 @@ export const AREAS: AreaDef[] = [
     ],
   },
   {
+    path: 'dynamic',
+    label: 'Dynamic',
+    pages: [page('', 'Dynamic allocation', () => import('@/features/dynamic/dynamic-page'))],
+  },
+  {
     path: 'risk',
     label: 'Risk',
     pages: [

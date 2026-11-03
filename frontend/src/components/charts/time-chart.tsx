@@ -90,7 +90,14 @@ export function TimeChart({
           max: Math.max(...values) * 1.05,
         }),
         ...axis,
-        axisLabel: { ...axis.axisLabel, formatter: (v: number) => yFormat(v) },
+        // The data-bounded log axis ends between powers of ten; its end labels would collide
+        // with the nearest round tick.
+        axisLabel: {
+          ...axis.axisLabel,
+          formatter: (v: number) => yFormat(v),
+          showMinLabel: !useLog,
+          showMaxLabel: !useLog,
+        },
       },
       series: lines.map((l, i) => ({
         name: l.name,

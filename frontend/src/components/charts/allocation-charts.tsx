@@ -175,8 +175,8 @@ export function AllocationStack({
       xAxis: {
         type: 'value',
         // 0–100% for long-only books; wider when shorts or leverage need the room.
-        min: (v: { min: number }) => Math.min(0, Math.floor(v.min * 10) / 10),
-        max: (v: { max: number }) => Math.max(1, Math.ceil(v.max * 10) / 10),
+        min: (v: { min: number }) => Math.min(0, Math.floor(v.min * 10 + 1e-6) / 10),
+        max: (v: { max: number }) => Math.max(1, Math.ceil(v.max * 10 - 1e-6) / 10),
         ...axis,
         axisLabel: { ...axis.axisLabel, formatter: (v: number) => pct(v, 0) },
       },

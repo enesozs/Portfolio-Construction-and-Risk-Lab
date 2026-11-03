@@ -1,17 +1,8 @@
 import { useMemo, useState } from 'react'
 import { ChartGuide } from '@/components/chart-guide'
-import { ChartCard, LegendKey } from '@/components/charts/chart-card'
-import { type ChartOption, EChart } from '@/components/charts/echart'
-import {
-  assetColor,
-  axisStyle,
-  GRID,
-  tooltipHeader,
-  tooltipRow,
-  tooltipStyle,
-  useChartColors,
-} from '@/components/charts/theme'
+import { useChartColors } from '@/components/charts/theme'
 import { TimeChart } from '@/components/charts/time-chart'
+import { WeightsArea } from '@/components/charts/weights-area'
 import { PageHeader } from '@/components/page-header'
 import { PanelSection } from '@/components/panel-section'
 import { ParamControl } from '@/components/param-control'
@@ -79,77 +70,8 @@ function TargetsChart({
   assets: string[]
   stale: boolean
 }) {
-  const c = useChartColors()
-  const segments = useMemo(() => {
-    const known = assets.filter((a) => a in data.targets)
-    const rest = known.slice(c.categorical.length)
-    const names = [...known.slice(0, c.categorical.length), ...(rest.length ? ['Other'] : [])]
-    return names.map((name) => ({
-      name,
-      color: name === 'Other' ? c.other : assetColor(c, assets.indexOf(name)),
-      members: name === 'Other' ? rest : [name],
-    }))
-  }, [assets, data.targets, c])
-  const option = useMemo<ChartOption | null>(() => {
-    const first = segments[0] && data.targets[segments[0].members[0]]
-    if (!first || first.dates.length === 0) return null
-    const axis = axisStyle(c)
-    const dates = first.dates
-    // Extend the last target to the end of the test so the final holding period shows.
-    const end = data.net.dates[data.net.dates.length - 1]
-    const xs = end && end > dates[dates.length - 1] ? [...dates, end] : dates
-    return {
-      animationDurationUpdate: 150,
-      grid: { ...GRID, top: 16 },
-      tooltip: {
-        ...tooltipStyle(c),
-        formatter: (raw: unknown) => {
-          const params = raw as { seriesName: string; color: string; value: [string, number] }[]
-          if (!params.length) return ''
-          return (
-            tooltipHeader(`Target set ${longDate(params[0].value[0])}`) +
-            [...params]
-              .reverse()
-              .filter((p) => p.value[1] > 0.0005)
-              .map((p) => tooltipRow(p.color, pct(p.value[1], 1), p.seriesName))
-              .join('')
-          )
-        },
-      },
-      xAxis: {
-        type: 'time',
-        ...axis,
-        splitLine: { show: false },
-        axisLabel: { ...axis.axisLabel, hideOverlap: true },
-      },
-      yAxis: {
-        type: 'value',
-        min: 0,
-        max: 1,
-        ...axis,
-        axisLabel: { ...axis.axisLabel, formatter: (v: number) => pct(v, 0) },
-      },
-      series: segments.map((seg) => ({
-        name: seg.name,
-        type: 'line' as const,
-        stack: 'targets',
-        step: 'end' as const,
-        showSymbol: false,
-        data: xs.map((d, k) => {
-          const i = Math.min(k, dates.length - 1)
-          const v = seg.members.reduce((s, a) => s + (data.targets[a]?.values[i] ?? 0), 0)
-          return [d, Math.max(v, 0)]
-        }),
-        // The boundary line is drawn in the surface colour: a 2px gap between fills.
-        lineStyle: { width: 2, color: c.surface },
-        itemStyle: { color: seg.color },
-        areaStyle: { color: seg.color, opacity: 1 },
-        emphasis: { disabled: true },
-      })),
-    }
-  }, [segments, data, c])
   return (
-    <ChartCard
+    <WeightsArea
       title="Target weights over time"
       description="The allocation chosen at each rebalance date, using only the data available that day. Between rebalances the actual holdings drift away from these targets with prices."
       guide={
@@ -165,25 +87,13 @@ function TargetsChart({
           </p>
         </>
       }
-      action={
-        <div className="flex max-w-md flex-wrap gap-x-4 gap-y-1">
-          {segments.map((s) => (
-            <LegendKey key={s.name} color={s.color} label={s.name} band />
-          ))}
-        </div>
-      }
+      assets={assets}
+      weights={data.targets}
+      step
+      until={data.net.dates[data.net.dates.length - 1]}
+      tooltipLabel={(d) => `Target set ${longDate(d)}`}
       stale={stale}
-    >
-      {option ? (
-        <EChart
-          option={option}
-          className="h-80"
-          ariaLabel="Stacked area of target weights per asset at each rebalance date"
-        />
-      ) : (
-        <div className="h-80" />
-      )}
-    </ChartCard>
+    />
   )
 }
 

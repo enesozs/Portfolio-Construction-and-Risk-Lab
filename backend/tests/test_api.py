@@ -135,3 +135,35 @@ def test_holdings_limit_and_infeasible_group_cap() -> None:
     response = client.post("/api/construction/portfolios", json=_with(group_cap=0.1))
     assert response.status_code == 422
     assert "groups" in response.json()["detail"]
+
+
+def test_dynamic_signals_and_backtest() -> None:
+    catalogue = client.get("/api/dynamic/signals").json()["signals"]
+    assert {s["kind"] for s in catalogue} == {"timing", "ranking"}
+    out = post(
+        "/dynamic/backtest",
+        method="top_k",
+        timing="absolute_momentum",
+        ranking="momentum",
+        top_k=2,
+    )
+    assert out["strategy"]["values"][0] > 0
+    assert set(out["current"]["target"]) == {*UNIVERSE["tickers"], "CASH"}
+    assert sum(out["current"]["target"].values()) == pytest.approx(1.0)
+    assert len(out["trials"]) >= 5
+    assert 0 <= out["strategy_stats"]["average_cash"] <= 1
+    custom = post(
+        "/dynamic/backtest",
+        base="custom",
+        base_weights={"AAPL": 2, "TLT": 1},
+        timing="trend",
+    )
+    assert custom["current"]["target"]["MSFT"] == 0.0
+
+
+def test_dynamic_rejects_mismatched_signals() -> None:
+    response = client.post(
+        "/api/dynamic/backtest", json={"universe": UNIVERSE, "method": "tilt", "ranking": None}
+    )
+    assert response.status_code == 422
+    assert "ranking signal" in response.json()["detail"]
