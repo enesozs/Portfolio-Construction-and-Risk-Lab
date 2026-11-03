@@ -407,6 +407,10 @@ export interface components {
       label: string
       /** Uses Expected Returns */
       uses_expected_returns: boolean
+      /** Respects Constraints */
+      respects_constraints: boolean
+      /** Idea */
+      idea: string
     }
     /** AssetStats */
     AssetStats: {
@@ -431,7 +435,18 @@ export interface components {
        * @default max_sharpe
        * @enum {string}
        */
-      portfolio: 'equal_weight' | 'min_variance' | 'max_sharpe' | 'risk_parity' | 'hrp' | 'min_cvar'
+      portfolio:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
       /**
        * Benchmark
        * @default SPY
@@ -519,7 +534,18 @@ export interface components {
        * @default max_sharpe
        * @enum {string}
        */
-      method: 'equal_weight' | 'min_variance' | 'max_sharpe' | 'risk_parity' | 'hrp' | 'min_cvar'
+      method:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
       /**
        * N Bootstrap
        * @default 150
@@ -590,6 +616,33 @@ export interface components {
       sharpe: (number | null)[]
       /** Turnover */
       turnover?: (number | null)[]
+    }
+    /**
+     * ConstraintsIn
+     * @description Portfolio rules every constraint-aware allocator follows (see optimization.convex).
+     */
+    ConstraintsIn: {
+      /**
+       * Long Short
+       * @default false
+       */
+      long_short: boolean
+      /**
+       * Max Short
+       * @default 0.2
+       */
+      max_short: number
+      /**
+       * Gross Leverage
+       * @default 1.6
+       */
+      gross_leverage: number
+      /** Group Cap */
+      group_cap?: number | null
+      /** Max Holdings */
+      max_holdings?: number | null
+      /** Max Tracking Error */
+      max_tracking_error?: number | null
     }
     /** ContributionRow */
     ContributionRow: {
@@ -741,7 +794,18 @@ export interface components {
        * @default max_sharpe
        * @enum {string}
        */
-      method: 'equal_weight' | 'min_variance' | 'max_sharpe' | 'risk_parity' | 'hrp' | 'min_cvar'
+      method:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
     }
     /** EstimatorsResponse */
     EstimatorsResponse: {
@@ -868,7 +932,18 @@ export interface components {
        * @default max_sharpe
        * @enum {string}
        */
-      portfolio: 'equal_weight' | 'min_variance' | 'max_sharpe' | 'risk_parity' | 'hrp' | 'min_cvar'
+      portfolio:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
     }
     /** PortfolioSummary */
     PortfolioSummary: {
@@ -902,6 +977,8 @@ export interface components {
       diversification_ratio: number
       /** Uses Expected Returns */
       uses_expected_returns: boolean
+      /** Respects Constraints */
+      respects_constraints: boolean
     }
     /** PortfoliosResponse */
     PortfoliosResponse: {
@@ -937,7 +1014,18 @@ export interface components {
        * @default max_sharpe
        * @enum {string}
        */
-      portfolio: 'equal_weight' | 'min_variance' | 'max_sharpe' | 'risk_parity' | 'hrp' | 'min_cvar'
+      portfolio:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
       /**
        * Cost Bps
        * @default 5
@@ -1016,7 +1104,18 @@ export interface components {
        * @default max_sharpe
        * @enum {string}
        */
-      portfolio: 'equal_weight' | 'min_variance' | 'max_sharpe' | 'risk_parity' | 'hrp' | 'min_cvar'
+      portfolio:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
       /** Shocks */
       shocks: {
         [key: string]: number
@@ -1039,7 +1138,18 @@ export interface components {
        * @default max_sharpe
        * @enum {string}
        */
-      portfolio: 'equal_weight' | 'min_variance' | 'max_sharpe' | 'risk_parity' | 'hrp' | 'min_cvar'
+      portfolio:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
       /**
        * Model
        * @default student_t
@@ -1108,7 +1218,18 @@ export interface components {
        * @default max_sharpe
        * @enum {string}
        */
-      portfolio: 'equal_weight' | 'min_variance' | 'max_sharpe' | 'risk_parity' | 'hrp' | 'min_cvar'
+      portfolio:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
       /**
        * Correlation Stress
        * @default 0.3
@@ -1184,31 +1305,37 @@ export interface components {
       universe: components['schemas']['UniverseIn']
       /**
        * Objective
-       * @default max_sharpe
+       * @default mean_variance
        * @enum {string}
        */
-      objective: 'max_sharpe' | 'min_variance'
+      objective: 'mean_variance' | 'min_volatility'
       /**
        * Reference
        * @default equal_weight
        * @enum {string}
        */
-      reference: 'equal_weight' | 'min_variance' | 'max_sharpe' | 'risk_parity' | 'hrp' | 'min_cvar'
+      reference:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
       /**
-       * Penalty
-       * @default 0.25
+       * Risk Aversion
+       * @default 3
        */
-      penalty: number
+      risk_aversion: number
       /**
-       * Min Weight
-       * @default 0
+       * Cost
+       * @default 0.01
        */
-      min_weight: number
-      /**
-       * Max Weight
-       * @default 1
-       */
-      max_weight: number
+      cost: number
       /** Max Turnover */
       max_turnover?: number | null
       /** Max Volatility */
@@ -1244,6 +1371,7 @@ export interface components {
       max_weight?: number | null
       /** Risk Free */
       risk_free?: number | null
+      constraints?: components['schemas']['ConstraintsIn']
     }
     /** UniverseMeta */
     UniverseMeta: {
@@ -1269,6 +1397,10 @@ export interface components {
       risk_free: number
       /** Risk Free Source */
       risk_free_source: string
+      /** Groups */
+      groups: {
+        [key: string]: string
+      }
     }
     /** UniverseRequest */
     UniverseRequest: {
@@ -1304,7 +1436,18 @@ export interface components {
        * @default max_sharpe
        * @enum {string}
        */
-      portfolio: 'equal_weight' | 'min_variance' | 'max_sharpe' | 'risk_parity' | 'hrp' | 'min_cvar'
+      portfolio:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
       /**
        * Target Volatility
        * @default 0.12
@@ -1346,7 +1489,18 @@ export interface components {
        * @default min_variance
        * @enum {string}
        */
-      method: 'equal_weight' | 'min_variance' | 'max_sharpe' | 'risk_parity' | 'hrp' | 'min_cvar'
+      method:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
       /**
        * Window
        * @default rolling

@@ -21,7 +21,14 @@ import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import type { UniverseIn } from '@/lib/api'
 import { longDate, pct } from '@/lib/format'
-import { PRESETS, useOverview, useUniverse } from './universe-context'
+import { ConstraintsEditor } from './constraints-editor'
+import {
+  constraintsSummary,
+  DEFAULT_CONSTRAINTS,
+  PRESETS,
+  useOverview,
+  useUniverse,
+} from './universe-context'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -72,6 +79,8 @@ export function UniverseBar() {
               {pct(meta.risk_free, 2)}
               {universe.risk_free == null ? ' (T-bills)' : ' (manual)'} · {covLabel}
               {universe.max_weight != null && ` · cap ${pct(universe.max_weight, 0)}`}
+              {constraintsSummary(universe.constraints) &&
+                ` · ${constraintsSummary(universe.constraints)}`}
             </>
           ) : overview.isError ? (
             <span className="text-destructive-foreground">{overview.error.message}</span>
@@ -284,6 +293,10 @@ function UniverseEditor() {
                 )}
               </div>
             </div>
+            <ConstraintsEditor
+              value={draft.constraints ?? DEFAULT_CONSTRAINTS}
+              onChange={(next) => set('constraints', next)}
+            />
             {error && (
               <p role="alert" className="text-destructive-foreground text-sm">
                 {error}

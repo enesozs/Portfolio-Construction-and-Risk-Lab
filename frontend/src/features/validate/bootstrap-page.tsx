@@ -288,7 +288,7 @@ export default function BootstrapPage() {
                 value={method}
                 onChange={setMethod}
                 label="Method"
-                exclude={['equal_weight']}
+                exclude={['equal_weight', 'resampled']}
               />
             </PanelSection>
             <Separator />

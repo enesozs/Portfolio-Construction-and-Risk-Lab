@@ -24,7 +24,7 @@ import { api, type CompareResponse, type PortfolioKey } from '@/lib/api'
 import { fixed, pct } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-type Objective = 'max_sharpe' | 'min_variance'
+type Objective = 'mean_variance' | 'min_volatility'
 
 interface CompareRow {
   label: string
@@ -170,11 +170,10 @@ export default function RobustPage() {
   })
 
   // Turnover-aware rebalancing.
-  const [objective, setObjective] = useState<Objective>('max_sharpe')
+  const [objective, setObjective] = useState<Objective>('mean_variance')
   const [reference, setReference] = useState<PortfolioKey>('equal_weight')
-  const [penalty, setPenalty] = useState(0.25)
-  const [minWeightPct, setMinWeightPct] = useState(0)
-  const [maxWeightPct, setMaxWeightPct] = useState(100)
+  const [targetAversion, setTargetAversion] = useState(3)
+  const [costPct, setCostPct] = useState(1)
   const [capTurnover, setCapTurnover] = useState(false)
   const [maxTurnoverPct, setMaxTurnoverPct] = useState(20)
   const [capVol, setCapVol] = useState(false)
@@ -182,9 +181,8 @@ export default function RobustPage() {
   const turnover = useLab('turnover', api.turnover, {
     objective,
     reference,
-    penalty,
-    min_weight: minWeightPct / 100,
-    max_weight: maxWeightPct / 100,
+    risk_aversion: targetAversion,
+    cost: costPct / 100,
     max_turnover: capTurnover ? maxTurnoverPct / 100 : null,
     max_volatility: capVol ? maxVolPct / 100 : null,
   })
@@ -233,19 +231,15 @@ export default function RobustPage() {
             <Separator />
             <PanelSection
               title="Turnover-aware rebalancing"
-              hint="Move from a current portfolio toward a target, paying a penalty for every unit traded."
+              hint="Move from a current portfolio toward a target, paying a cost for every unit traded."
             >
               <Segmented<Objective>
                 label="Target objective"
                 value={objective}
-                onChange={(next) => {
-                  setObjective(next)
-                  // The penalty is in the objective's own units, which differ by ~100×.
-                  setPenalty(next === 'max_sharpe' ? 0.25 : 0.005)
-                }}
+                onChange={setObjective}
                 options={[
-                  { value: 'max_sharpe', label: 'Max Sharpe' },
-                  { value: 'min_variance', label: 'Min variance' },
+                  { value: 'mean_variance', label: 'Mean-variance' },
+                  { value: 'min_volatility', label: 'Min volatility' },
                 ]}
                 className="w-full"
               />
@@ -254,39 +248,33 @@ export default function RobustPage() {
                 value={reference}
                 onChange={setReference}
               />
+              {objective === 'mean_variance' && (
+                <ParamControl
+                  label="Risk aversion"
+                  value={targetAversion}
+                  onChange={setTargetAversion}
+                  min={0}
+                  max={20}
+                  step={0.5}
+                  digits={1}
+                />
+              )}
               <ParamControl
-                label="Turnover penalty"
-                value={penalty}
-                onChange={setPenalty}
+                label="Cost of turnover"
+                value={costPct}
+                onChange={setCostPct}
                 min={0}
-                max={objective === 'max_sharpe' ? 5 : 0.1}
-                step={objective === 'max_sharpe' ? 0.05 : 0.001}
-                digits={objective === 'max_sharpe' ? 2 : 3}
+                max={10}
+                step={0.1}
+                digits={1}
+                unit="%"
               />
               <p className="-mt-2 text-muted-foreground text-xs">
-                Cost per 100% of one-way turnover, in the objective's own units: Sharpe ratio for
-                max Sharpe (0.25 means trading the whole portfolio must add 0.25 of Sharpe),
-                variance for min variance (15% volatility is a variance of 0.0225, so useful
-                penalties are tiny). 0 jumps straight to the target.
+                Annual expected return given up per 100% of one-way turnover, in the same units for
+                both objectives (mean-variance utility and volatility are both annual returns). 1%
+                means trading the whole portfolio must improve the objective by at least 1% a year.
+                0 jumps straight to the target. Weight bounds come from the universe constraints.
               </p>
-              <ParamControl
-                label="Min weight per asset"
-                value={minWeightPct}
-                onChange={setMinWeightPct}
-                min={0}
-                max={50}
-                step={1}
-                unit="%"
-              />
-              <ParamControl
-                label="Max weight per asset"
-                value={maxWeightPct}
-                onChange={setMaxWeightPct}
-                min={1}
-                max={100}
-                step={1}
-                unit="%"
-              />
               <OptionalLimit
                 id="turnover-cap"
                 label="Max turnover"
@@ -388,8 +376,8 @@ export default function RobustPage() {
                       small differences alone.
                     </p>
                     <p>
-                      Raise the penalty or set a turnover cap and the bars move back toward the
-                      current portfolio.
+                      Raise the cost or set a turnover cap and the bars move back toward the current
+                      portfolio.
                     </p>
                   </>
                 }

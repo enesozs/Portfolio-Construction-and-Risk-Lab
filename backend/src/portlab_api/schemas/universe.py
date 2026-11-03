@@ -18,6 +18,8 @@ class UniverseMeta(BaseModel):
     """Tickers served from an old cache copy or the bundled snapshot."""
     risk_free: float
     risk_free_source: str
+    groups: dict[str, str]
+    """Sector (stocks) or fund category (ETFs), used by the group cap."""
 
 
 class AssetStats(BaseModel):

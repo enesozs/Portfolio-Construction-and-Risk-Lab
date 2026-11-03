@@ -67,6 +67,7 @@ def overview(req: UniverseRequest) -> OverviewResponse:
             stale=u.stale,
             risk_free=u.risk_free,
             risk_free_source=u.risk_free_source,
+            groups=ctx.groups,
         ),
         assets=assets,
         correlation=corr.tolist(),

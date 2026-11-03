@@ -89,6 +89,15 @@ def main() -> int:
         settle(page)
         expect(page.get_by_role("cell", name="Maximum Sharpe")).to_be_visible()
 
+        # Constraints apply everywhere; methods that cannot honour them are flagged.
+        page.get_by_role("button", name="Edit universe").click()
+        page.get_by_role("radio", name="Long-short").click()
+        page.get_by_role("button", name="Apply").click()
+        settle(page)
+        expect(page.get_by_text("long-short (≤20% short, 1.6× gross)")).to_be_visible()
+        expect(page.get_by_text("unconstrained").first).to_be_visible()
+        shot(page, "construct_long_short")
+
         # Bad input is reported, not crashed on.
         page.get_by_role("button", name="Edit universe").click()
         page.get_by_label("Tickers").fill("AAPL")

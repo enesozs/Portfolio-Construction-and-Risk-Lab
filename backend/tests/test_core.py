@@ -5,14 +5,9 @@ import pytest
 from portlab._pandas import column
 from portlab.estimators.covariance import sample_covariance
 from portlab.estimators.returns import annualized_mean_return
-from portlab.optimization.frontier import efficient_frontier
+from portlab.optimization import convex
+from portlab.optimization.convex import Constraints, efficient_frontier
 from portlab.optimization.hrp import hierarchical_risk_parity
-from portlab.optimization.optimizers import (
-    equal_weight,
-    global_minimum_variance,
-    maximum_sharpe,
-    risk_parity,
-)
 from portlab.portfolio.metrics import portfolio_return, portfolio_volatility
 from portlab.risk.decomposition import risk_contributions
 from portlab.validation.walk_forward import walk_forward_portfolio
@@ -28,6 +23,14 @@ def sample_returns() -> pd.DataFrame:
     return pd.DataFrame(x, columns=["A", "B", "C"])
 
 
+LONG_ONLY = Constraints()
+
+
+def equal_weight(assets) -> pd.Series:
+    assets = list(assets)
+    return pd.Series(1 / len(assets), index=assets)
+
+
 def test_equal_weight_sums_to_one() -> None:
     w = equal_weight(["A", "B", "C"])
     assert np.isclose(float(w.sum()), 1.0)
@@ -35,7 +38,7 @@ def test_equal_weight_sums_to_one() -> None:
 
 def test_gmv_is_feasible() -> None:
     cov = sample_covariance(sample_returns())
-    w = global_minimum_variance(cov)
+    w = convex.min_variance(cov, LONG_ONLY)
     assert np.isclose(float(w.sum()), 1.0, atol=1e-6)
     assert bool((w >= -1e-8).all())
 
@@ -43,15 +46,15 @@ def test_gmv_is_feasible() -> None:
 def test_max_sharpe_is_feasible() -> None:
     r = sample_returns()
     mu, cov = annualized_mean_return(r), sample_covariance(r)
-    w = maximum_sharpe(mu, cov)
+    w = convex.max_sharpe(mu, cov, 0.0, LONG_ONLY)
     assert np.isclose(float(w.sum()), 1.0, atol=1e-6)
 
 
 def test_risk_parity_contributions_close() -> None:
     cov = sample_covariance(sample_returns())
-    w = risk_parity(cov)
+    w = convex.risk_parity(cov, LONG_ONLY)
     rc = column(risk_contributions(w, cov), "risk_contribution_pct")
-    assert float(rc.max()) - float(rc.min()) < 0.03
+    assert float(rc.max()) - float(rc.min()) < 1e-4
 
 
 def test_metrics_are_finite() -> None:
@@ -65,7 +68,7 @@ def test_metrics_are_finite() -> None:
 def test_efficient_frontier_has_points() -> None:
     r = sample_returns()
     mu, cov = annualized_mean_return(r), sample_covariance(r)
-    frontier = efficient_frontier(mu, cov, n_points=12)
+    frontier = efficient_frontier(mu, cov, LONG_ONLY, n_points=12)
     assert len(frontier) >= 3
     assert {"return", "volatility"}.issubset(frontier.columns)
 
@@ -86,8 +89,6 @@ def test_hrp_is_long_only_and_fully_invested() -> None:
 
 
 def test_efficient_frontier_starts_at_gmv_and_is_monotonic():
-    from portlab.optimization.frontier import efficient_frontier
-
     mu = pd.Series([0.08, 0.12, 0.18], index=["A", "B", "C"])
     cov = pd.DataFrame(
         [
@@ -98,7 +99,7 @@ def test_efficient_frontier_starts_at_gmv_and_is_monotonic():
         index=mu.index,
         columns=mu.index,
     )
-    frontier = efficient_frontier(mu, cov, n_points=20)
+    frontier = efficient_frontier(mu, cov, LONG_ONLY, n_points=20)
     assert len(frontier) >= 10
     assert column(frontier, "return").is_monotonic_increasing
     # On the efficient branch, risk should not fall as target return increases.
@@ -148,9 +149,7 @@ def test_estimator_comparison_returns_nine_combinations() -> None:
     from portlab.research.estimator_comparison import compare_estimators
 
     r = sample_returns()
-    mu = annualized_mean_return(r)
-    cov = sample_covariance(r)
-    baseline = maximum_sharpe(mu, cov)
+    baseline = convex.max_sharpe(annualized_mean_return(r), sample_covariance(r), 0.0, LONG_ONLY)
     table, weights = compare_estimators(r, "max_sharpe", baseline_weights=baseline)
     assert len(table) == 9
     assert len(weights) == 9
@@ -201,24 +200,16 @@ def test_block_bootstrap_weight_stability() -> None:
     assert {"mean", "std", "p05", "p95"}.issubset(summary.columns)
 
 
-def test_turnover_aware_optimizer_respects_turnover_cap() -> None:
-    from portlab.optimization.turnover import one_way_turnover, turnover_aware_portfolio
-
+def test_turnover_aware_respects_the_cap_and_trades_less_as_cost_rises() -> None:
     r = sample_returns()
     mu, cov = annualized_mean_return(r), sample_covariance(r)
     reference = equal_weight(r.columns)
-    w = turnover_aware_portfolio(
-        mu,
-        cov,
-        reference,
-        objective="maximum_sharpe",
-        turnover_penalty=0.25,
-        max_turnover=0.10,
-        min_weight=0.0,
-        max_weight=0.8,
-    )
-    assert np.isclose(float(w.sum()), 1.0, atol=1e-6)
-    assert one_way_turnover(w, reference) <= 0.10001
+    capped = convex.turnover_aware(mu, cov, reference, LONG_ONLY, max_turnover=0.10)
+    assert np.isclose(float(capped.sum()), 1.0, atol=1e-6)
+    assert convex.one_way_turnover(capped, reference) <= 0.10 + 1e-6
+    free = convex.turnover_aware(mu, cov, reference, LONG_ONLY, cost=0.0)
+    costly = convex.turnover_aware(mu, cov, reference, LONG_ONLY, cost=0.05)
+    assert convex.one_way_turnover(costly, reference) < convex.one_way_turnover(free, reference)
 
 
 def test_black_litterman_posterior_moves_toward_view():
@@ -232,25 +223,20 @@ def test_black_litterman_posterior_moves_toward_view():
 
 
 def test_minimum_cvar_weights_sum_to_one():
-    from portlab.optimization.cvar import minimum_cvar
-
     rng = np.random.default_rng(10)
     returns = pd.DataFrame(rng.normal(0.0004, 0.01, size=(200, 3)), columns=list("ABC"))
-    w = minimum_cvar(returns, confidence=0.95)
+    w = convex.min_cvar(returns, sample_covariance(returns), 0.95, LONG_ONLY)
     assert np.isclose(float(w.sum()), 1.0, atol=1e-6)
     assert (w >= -1e-9).all()
 
 
-def test_risk_budget_portfolio_matches_equal_budget():
-    from portlab.optimization.risk_budgeting import risk_budget_portfolio
-    from portlab.risk.decomposition import risk_contributions
-
+def test_risk_budget_portfolio_matches_the_budget():
     cov = pd.DataFrame(np.diag([0.04, 0.09, 0.16]), index=list("ABC"), columns=list("ABC"))
-    budgets = pd.Series([1 / 3, 1 / 3, 1 / 3], index=list("ABC"))
-    w = risk_budget_portfolio(cov, budgets)
+    budgets = pd.Series([0.5, 0.3, 0.2], index=list("ABC"))
+    w = convex.risk_parity(cov, LONG_ONLY, budgets)
     rc = risk_contributions(w, cov)["risk_contribution_pct"]
     assert np.isclose(float(w.sum()), 1.0, atol=1e-6)
-    assert np.max(np.abs(rc.to_numpy() - 1 / 3)) < 1e-3
+    assert np.max(np.abs(rc.to_numpy() - budgets.to_numpy())) < 1e-5
 
 
 def test_custom_scenario_is_weighted_sum():
@@ -309,13 +295,14 @@ def test_monte_carlo_shapes_and_metrics():
     assert 0 <= result.metrics["probability_of_loss"].value <= 1
 
 
-def test_robust_portfolio_sums_to_one():
-    from portlab.optimization.robust import robust_mean_variance
-
-    mu = pd.Series([0.10, 0.06, 0.04], index=list("ABC"))
-    cov = pd.DataFrame(np.diag([0.04, 0.03, 0.02]), index=list("ABC"), columns=list("ABC"))
-    w = robust_mean_variance(mu, cov, observations=252)
-    assert np.isclose(float(w.sum()), 1.0, atol=1e-6)
+def test_robust_penalty_moves_weight_away_from_uncertain_means():
+    mu = pd.Series([0.10, 0.10, 0.10], index=list("ABC"))
+    cov = pd.DataFrame(np.diag([0.09, 0.04, 0.01]), index=list("ABC"), columns=list("ABC"))
+    plain = convex.robust_mean_variance(mu, cov, 252, 1.0, 0.0, LONG_ONLY)
+    robust = convex.robust_mean_variance(mu, cov, 252, 1.0, 2.0, LONG_ONLY)
+    assert np.isclose(float(robust.sum()), 1.0, atol=1e-6)
+    # A has the noisiest mean (highest volatility): the penalty cuts it.
+    assert float(robust.at["A"]) < float(plain.at["A"])
 
 
 def test_diversification_breakdown_is_finite():
@@ -329,7 +316,7 @@ def test_diversification_breakdown_is_finite():
 
 
 def test_annual_mean_standard_error_matches_simulation():
-    from portlab.optimization.robust import annual_mean_standard_error
+    from portlab.optimization.convex import annual_mean_standard_error
 
     rng = np.random.default_rng(9)
     daily_vol, days = 0.01, 500

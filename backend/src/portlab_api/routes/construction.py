@@ -8,14 +8,10 @@ from fastapi import APIRouter
 
 from portlab._pandas import column
 from portlab.data.fundamentals import market_values
+from portlab.optimization import convex
 from portlab.optimization.black_litterman import black_litterman_posterior, equilibrium_returns
-from portlab.optimization.cvar import historical_var_cvar, minimum_cvar
-from portlab.optimization.frontier import efficient_frontier
-from portlab.optimization.optimizers import maximum_sharpe
+from portlab.optimization.convex import one_way_turnover
 from portlab.optimization.registry import ALLOCATORS
-from portlab.optimization.risk_budgeting import risk_budget_portfolio
-from portlab.optimization.robust import robust_mean_variance
-from portlab.optimization.turnover import one_way_turnover, turnover_aware_portfolio
 from portlab.portfolio.metrics import (
     performance_summary,
     portfolio_return,
@@ -30,6 +26,7 @@ from portlab.risk.decomposition import (
     effective_number_of_assets,
     risk_contributions,
 )
+from portlab.risk.tail import historical_var_cvar
 
 from ..schemas.common import UniverseRequest
 from ..schemas.construction import (
@@ -101,6 +98,7 @@ def portfolios(req: UniverseRequest) -> PortfoliosResponse:
             effective_assets=effective_number_of_assets(w),
             diversification_ratio=diversification_ratio(w, est.cov),
             uses_expected_returns=ALLOCATORS[key].uses_expected_returns,
+            respects_constraints=ALLOCATORS[key].respects_constraints,
         )
         rows.append(summary)
         table[key] = {
@@ -121,8 +119,7 @@ def portfolios(req: UniverseRequest) -> PortfoliosResponse:
         for label, (key, metric) in OBJECTIVES.items()
     ]
     try:
-        cap = req.universe.max_weight
-        curve = efficient_frontier(est.mu, est.cov, n_points=40, max_weight=cap)
+        curve = convex.efficient_frontier(est.mu, est.cov, ctx.constraints, n_points=40)
         frontier = [
             FrontierPoint(expected_return=float(r), volatility=float(v))
             for r, v in zip(curve["return"], curve["volatility"], strict=True)
@@ -186,7 +183,7 @@ def black_litterman(req: BlackLittermanRequest) -> BlackLittermanResponse:
     pi = equilibrium_returns(cov, prior, req.risk_aversion)
     posterior = black_litterman_posterior(cov, prior, views, req.risk_aversion)
     total = posterior + rf
-    weights = maximum_sharpe(total, cov, rf, max_weight=req.universe.max_weight)
+    weights = convex.max_sharpe(total, cov, rf, ctx.constraints)
     return BlackLittermanResponse(
         prior_weights=weights_out(prior),
         prior_sources=sources,
@@ -202,13 +199,9 @@ def black_litterman(req: BlackLittermanRequest) -> BlackLittermanResponse:
 def tail_risk(req: TailRiskRequest) -> TailRiskResponse:
     ctx = context(req.universe)
     returns = ctx.universe.returns
-    cap = req.universe.max_weight or 1.0
     candidates = {
-        "min_cvar": minimum_cvar(
-            returns,
-            confidence=req.confidence,
-            max_weight=cap,
-            minimum_expected_return=req.min_return,
+        "min_cvar": convex.min_cvar(
+            returns, ctx.estimates.cov, req.confidence, ctx.constraints, req.min_return
         ),
         "min_variance": ctx.weights("min_variance"),
         "max_sharpe": ctx.weights("max_sharpe"),
@@ -232,13 +225,13 @@ def tail_risk(req: TailRiskRequest) -> TailRiskResponse:
 @router.post("/robust")
 def robust(req: RobustRequest) -> CompareResponse:
     ctx = context(req.universe)
-    w = robust_mean_variance(
+    w = convex.robust_mean_variance(
         ctx.estimates.mu,
         ctx.estimates.cov,
-        observations=len(ctx.universe.returns),
-        risk_aversion=req.risk_aversion,
-        uncertainty_aversion=req.uncertainty_aversion,
-        max_weight=req.universe.max_weight or 1.0,
+        len(ctx.universe.returns),
+        req.risk_aversion,
+        req.uncertainty_aversion,
+        ctx.constraints,
     )
     return _compare(ctx, ["Robust mean-variance", "Maximum Sharpe"], [w, ctx.weights("max_sharpe")])
 
@@ -247,24 +240,24 @@ def robust(req: RobustRequest) -> CompareResponse:
 def turnover(req: TurnoverRequest) -> CompareResponse:
     ctx = context(req.universe)
     reference = ctx.weights(req.reference)
-    aware = turnover_aware_portfolio(
-        ctx.estimates.mu,
-        ctx.estimates.cov,
-        reference,
-        objective="maximum_sharpe" if req.objective == "max_sharpe" else "minimum_variance",
-        turnover_penalty=req.penalty,
-        max_turnover=req.max_turnover,
-        min_weight=req.min_weight,
-        max_weight=req.max_weight,
-        target_volatility=req.max_volatility,
-        risk_free=ctx.universe.risk_free,
+    mu, cov, c = ctx.estimates.mu, ctx.estimates.cov, ctx.constraints
+    common = {"objective": req.objective, "risk_aversion": req.risk_aversion}
+    # The same objective with free trading: where the portfolio would go if costs were zero.
+    target = convex.turnover_aware(
+        mu, cov, reference, c, cost=0.0, max_volatility=req.max_volatility, **common
     )
-    labels = [
-        f"Current ({ALLOCATORS[req.reference].label})",
-        "Unconstrained target",
-        "Turnover-aware",
-    ]
-    return _compare(ctx, labels, [reference, ctx.weights(req.objective), aware], ref=reference)
+    aware = convex.turnover_aware(
+        mu,
+        cov,
+        reference,
+        c,
+        cost=req.cost,
+        max_turnover=req.max_turnover,
+        max_volatility=req.max_volatility,
+        **common,
+    )
+    labels = [f"Current ({ALLOCATORS[req.reference].label})", "Cost-free target", "Turnover-aware"]
+    return _compare(ctx, labels, [reference, target, aware], ref=reference)
 
 
 @router.post("/risk-budget")
@@ -272,7 +265,7 @@ def risk_budget(req: RiskBudgetRequest) -> RiskBudgetResponse:
     ctx = context(req.universe)
     tickers = ctx.universe.tickers
     budgets = pd.Series({t: float(req.budgets.get(t, 0.0)) for t in tickers})
-    w = risk_budget_portfolio(ctx.estimates.cov, budgets, max_weight=req.universe.max_weight or 1.0)
+    w = convex.risk_parity(ctx.estimates.cov, ctx.constraints, budgets)
     rc = column(risk_contributions(w, ctx.estimates.cov), "risk_contribution_pct")
     return RiskBudgetResponse(
         weights=weights_out(w),

@@ -16,6 +16,8 @@ class AllocatorOut(BaseModel):
     key: str
     label: str
     uses_expected_returns: bool
+    respects_constraints: bool
+    idea: str
 
 
 class MetaResponse(BaseModel):
@@ -28,7 +30,13 @@ class MetaResponse(BaseModel):
 def meta() -> MetaResponse:
     return MetaResponse(
         allocators=[
-            AllocatorOut(key=s.key, label=s.label, uses_expected_returns=s.uses_expected_returns)
+            AllocatorOut(
+                key=s.key,
+                label=s.label,
+                uses_expected_returns=s.uses_expected_returns,
+                respects_constraints=s.respects_constraints,
+                idea=s.idea,
+            )
             for s in ALLOCATORS.values()
         ],
         crises=HISTORICAL_CRISES,

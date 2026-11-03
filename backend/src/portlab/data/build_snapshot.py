@@ -31,11 +31,16 @@ def main() -> None:
     prices.SNAPSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(prices.SNAPSHOT_PATH, float_format="%.6g")
 
-    caps = {t: fundamentals._fetch(t) for t in TICKERS if not t.startswith("^")}
+    names = [t for t in TICKERS if not t.startswith("^")]
+    caps = {t: fundamentals._fetch(t) for t in names}
     payload = {
         "as_of": str(frame.index[-1].date()),
-        "note": "Equities: market capitalisation. ETFs: total net assets (fund size).",
+        "note": (
+            "Equities: market capitalisation and sector. "
+            "ETFs: total net assets (fund size) and fund category."
+        ),
         "market_caps": {t: None if v is None else round(v, -6) for t, v in caps.items()},
+        "groups": {t: fundamentals.fetch_group(t) or "Other" for t in names},
     }
     fundamentals.SNAPSHOT_PATH.write_text(json.dumps(payload, indent=1) + "\n")
     print(f"snapshot: {frame.shape[1]} series, {frame.index[0].date()} → {payload['as_of']}")

@@ -25,9 +25,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useLab, useUniverse } from '@/features/universe/universe-context'
+import { constraintsSummary, useLab, useUniverse } from '@/features/universe/universe-context'
 import { api, type PortfoliosResponse } from '@/lib/api'
 import { fixed, pct } from '@/lib/format'
+
+function rank(priority: string[], key: string): number {
+  const i = priority.indexOf(key)
+  return i === -1 ? priority.length : i
+}
 
 function FrontierChart({ data, stale }: { data: PortfoliosResponse; stale: boolean }) {
   const c = useChartColors()
@@ -47,6 +52,21 @@ function FrontierChart({ data, stale }: { data: PortfoliosResponse; stale: boole
           [maxVol * 1.05, rf + slope * maxVol * 1.05],
         ]
       : []
+    // Label the most-asked-about portfolios first and skip any that would sit on top of an
+    // earlier label; every point keeps its tooltip.
+    const priority = ['max_sharpe', 'min_variance', 'equal_weight', 'risk_parity', 'kelly']
+    const order = [...data.portfolios].sort((a, b) => rank(priority, a.key) - rank(priority, b.key))
+    const maxRet = Math.max(...data.portfolios.map((p) => Math.abs(p.expected_return)), 1e-9)
+    const labelled = new Set<string>()
+    const placed: [number, number][] = []
+    for (const p of order) {
+      const x = p.expected_volatility / maxVol
+      const y = p.expected_return / maxRet
+      if (placed.every(([px, py]) => Math.hypot((x - px) * 2, y - py) > 0.12)) {
+        labelled.add(p.key)
+        placed.push([x, y])
+      }
+    }
     return {
       animationDurationUpdate: 150,
       grid: { ...GRID, right: 120 },
@@ -103,6 +123,7 @@ function FrontierChart({ data, stale }: { data: PortfoliosResponse; stale: boole
           data: data.portfolios.map((p) => ({
             name: p.label,
             value: [p.expected_volatility, p.expected_return],
+            label: { show: labelled.has(p.key) },
           })),
           itemStyle: { color: c.series2, borderColor: c.surface, borderWidth: 2 },
           label: {
@@ -113,7 +134,6 @@ function FrontierChart({ data, stale }: { data: PortfoliosResponse; stale: boole
             fontSize: 11,
             fontFamily: FONT_FAMILY,
           },
-          labelLayout: { moveOverlap: 'shiftY' },
         },
       ],
     }
@@ -121,7 +141,7 @@ function FrontierChart({ data, stale }: { data: PortfoliosResponse; stale: boole
   return (
     <ChartCard
       title="Efficient frontier"
-      description="The highest expected return achievable at each level of volatility (blue), with each standard portfolio placed against it (orange). The dashed capital market line mixes cash with the maximum-Sharpe portfolio."
+      description="The highest expected return achievable at each level of volatility under the universe constraints (blue), with each standard portfolio placed against it (orange; hover for any unlabelled one). The dashed capital market line mixes cash with the maximum-Sharpe portfolio."
       guide={
         <>
           <p>
@@ -150,7 +170,13 @@ function FrontierChart({ data, stale }: { data: PortfoliosResponse; stale: boole
   )
 }
 
-function ComparisonTable({ data }: { data: PortfoliosResponse }) {
+function ComparisonTable({
+  data,
+  constrained,
+}: {
+  data: PortfoliosResponse
+  constrained: boolean
+}) {
   const best = (pick: (p: PortfoliosResponse['portfolios'][number]) => number | null | undefined) =>
     data.portfolios.reduce<string | null>((key, p) => {
       const v = pick(p)
@@ -193,6 +219,16 @@ function ComparisonTable({ data }: { data: PortfoliosResponse }) {
               <TableRow key={p.key}>
                 <TableCell className="font-medium">
                   {p.label}
+                  {constrained && !p.respects_constraints && (
+                    <Badge
+                      variant="warning"
+                      size="sm"
+                      className="ms-2"
+                      title="Long-only by construction: ignores the universe constraints"
+                    >
+                      unconstrained
+                    </Badge>
+                  )}
                   {p.uses_expected_returns && (
                     <Badge
                       variant="outline"
@@ -287,6 +323,8 @@ function Rankings({ data }: { data: PortfoliosResponse }) {
 
 export default function PortfoliosPage() {
   const { universe } = useUniverse()
+  const constrained =
+    universe.max_weight != null || constraintsSummary(universe.constraints) != null
   const query = useLab('portfolios', api.portfolios, {})
   const data = query.data
   const top = data
@@ -302,9 +340,9 @@ export default function PortfoliosPage() {
   return (
     <>
       <PageHeader title="Portfolio construction">
-        Six standard ways to split capital across the same assets. They answer different questions
-        (lowest risk, best risk-adjusted return, equal risk shares), so they rarely agree. Methods
-        marked μ rely on expected-return estimates, the least reliable input.
+        Eleven ways to split capital across the same assets. They answer different questions (lowest
+        risk, best risk-adjusted return, equal risk shares), so they rarely agree. Methods marked μ
+        rely on expected-return estimates, the least reliable input.
       </PageHeader>
       <div className="flex flex-col gap-6">
         <QueryError error={query.error} />
@@ -334,7 +372,7 @@ export default function PortfoliosPage() {
             </StatGrid>
             <AllocationStack
               title="Allocations"
-              description="Share of capital in each asset. Colours follow the universe order on every page."
+              description="Share of capital in each asset; short positions extend left of 0%. Colours follow the universe order on every page."
               assets={universe.tickers}
               rows={data.portfolios.map((p) => ({ name: p.label, weights: p.weights }))}
               stale={query.stale}
@@ -343,7 +381,7 @@ export default function PortfoliosPage() {
               <FrontierChart data={data} stale={query.stale} />
               <Rankings data={data} />
             </div>
-            <ComparisonTable data={data} />
+            <ComparisonTable data={data} constrained={constrained} />
           </>
         )}
       </div>

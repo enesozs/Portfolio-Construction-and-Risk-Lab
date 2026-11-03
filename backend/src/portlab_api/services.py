@@ -15,6 +15,7 @@ from functools import lru_cache
 import numpy as np
 import pandas as pd
 
+from portlab.data.fundamentals import asset_groups
 from portlab.data.universe import Universe, build_universe
 from portlab.estimators.estimates import Estimates, estimate
 from portlab.optimization.registry import ALLOCATORS, Constraints, allocate
@@ -28,6 +29,7 @@ class Context:
     universe: Universe
     estimates: Estimates
     constraints: Constraints
+    groups: dict[str, str]
     portfolios: dict[str, pd.Series]
     """Standard portfolios by registry key (methods that failed are left out)."""
     errors: dict[str, str]
@@ -47,14 +49,9 @@ def context(spec: UniverseIn) -> Context:
 def _context(spec_json: str, _day: str) -> Context:
     spec = UniverseIn.model_validate_json(spec_json)
     universe = build_universe(spec.tickers, spec.start, spec.end, risk_free=spec.risk_free)
-    n = len(universe.tickers)
-    if spec.max_weight is not None and spec.max_weight * n < 1 - 1e-9:
-        raise ValueError(
-            f"a {spec.max_weight:.0%} cap on {n} assets cannot add up to 100%; "
-            f"raise it to at least {math.ceil(100 / n)}%"
-        )
     est = estimate(universe.returns, spec.return_method, spec.cov_method, universe.risk_free)
-    constraints = Constraints(max_weight=spec.max_weight)
+    groups = asset_groups(universe.tickers)
+    constraints = build_constraints(spec, universe.tickers, groups)
     portfolios: dict[str, pd.Series] = {}
     errors: dict[str, str] = {}
     for key in ALLOCATORS:
@@ -62,7 +59,38 @@ def _context(spec_json: str, _day: str) -> Context:
             portfolios[key] = allocate(key, est, constraints)
         except (ValueError, RuntimeError) as exc:
             errors[key] = str(exc)
-    return Context(universe, est, constraints, portfolios, errors)
+    return Context(universe, est, constraints, groups, portfolios, errors)
+
+
+def build_constraints(spec: UniverseIn, tickers: list[str], groups: dict[str, str]) -> Constraints:
+    """Library constraints from the request, with feasibility errors the user can act on."""
+    n, rules = len(tickers), spec.constraints
+    if spec.max_weight is not None and spec.max_weight * n < 1 - 1e-9:
+        raise ValueError(
+            f"a {spec.max_weight:.0%} cap on {n} assets cannot add up to 100%; "
+            f"raise it to at least {math.ceil(100 / n)}%"
+        )
+    group_max: dict[str, float] = {}
+    if rules.group_cap is not None:
+        distinct = sorted(set(groups.values()))
+        if rules.group_cap * len(distinct) < 1 - 1e-9:
+            raise ValueError(
+                f"a {rules.group_cap:.0%} cap on each of {len(distinct)} groups "
+                f"({', '.join(distinct)}) cannot add up to 100%; raise it or add assets"
+            )
+        group_max = dict.fromkeys(distinct, rules.group_cap)
+    if rules.max_holdings is not None and rules.max_holdings > n:
+        raise ValueError(f"at most {n} holdings are possible with {n} assets")
+    return Constraints(
+        max_weight=spec.max_weight,
+        min_weight=-rules.max_short if rules.long_short else 0.0,
+        gross_leverage=rules.gross_leverage if rules.long_short else None,
+        groups=groups,
+        group_max=group_max,
+        benchmark=dict.fromkeys(tickers, 1.0 / n) if rules.max_tracking_error else None,
+        max_tracking_error=rules.max_tracking_error,
+        max_holdings=rules.max_holdings,
+    )
 
 
 # ── Serialisation helpers ──────────────────────────────────────────────────────────────────

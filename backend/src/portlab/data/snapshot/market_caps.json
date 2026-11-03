@@ -29,5 +29,34 @@
   "VNQ": 66418000000.0,
   "DBC": 1918000000.0
  },
- "note": "Equities: market capitalisation. ETFs: total net assets (fund size)."
+ "note": "Equities: market capitalisation and GICS-style sector. ETFs: total net assets (fund size) and fund category.",
+ "groups": {
+  "AAPL": "Technology",
+  "MSFT": "Technology",
+  "NVDA": "Technology",
+  "JNJ": "Healthcare",
+  "XOM": "Energy",
+  "TLT": "Long Government",
+  "TSLA": "Consumer Cyclical",
+  "GOOGL": "Communication Services",
+  "AMZN": "Consumer Cyclical",
+  "META": "Communication Services",
+  "JPM": "Financial Services",
+  "SPY": "Large Blend",
+  "QQQ": "Large Growth",
+  "IWM": "Small Blend",
+  "IWD": "Large Value",
+  "IWF": "Large Growth",
+  "MTUM": "Large Blend",
+  "QUAL": "Large Blend",
+  "SPLV": "Large Value",
+  "EFA": "Foreign Large Blend",
+  "EEM": "Diversified Emerging Mkts",
+  "AGG": "Intermediate Core Bond",
+  "IEF": "Long Government",
+  "SHY": "Short Government",
+  "GLD": "Commodities Focused",
+  "VNQ": "Real Estate",
+  "DBC": "Commodities Broad Basket"
+ }
 }

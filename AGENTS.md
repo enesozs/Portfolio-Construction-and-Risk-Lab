@@ -31,7 +31,7 @@ It is an **educational research tool**, not investment advice. Priorities, in or
 
 ## 2. Current state (2026-11-03)
 
-- **Steps 1–2 are done.** The library, API and web app are at parity with the old Streamlit labs.
+- **Steps 1–3 are done.**
 - **Six areas, 16 pages**:
   - Universe: overview.
   - Construct: portfolios, estimators, Black–Litterman, tail risk, robust & turnover, risk budgets.
@@ -39,20 +39,11 @@ It is an **educational research tool**, not investment advice. Priorities, in or
   - Validate: walk-forward, rebalancing, stability.
   - Attribution.
   - Report.
-- **Next: step 3**, the optimizer core on cvxpy.
-  - Already written and tested, but not yet wired into the registry/API:
-    - `optimization/convex.py`: Constraints, min variance, max Sharpe via Cornuéjols–Tütüncü, max
-      diversification, mean-variance, min CVaR, Kelly, Spinu risk parity;
-    - `optimization/hierarchical.py`: HERC, NCO, Michaud resampling;
-    - `data/fundamentals.asset_groups`, plus the groups in the snapshot.
-  - Remaining for step 3:
-    - add `cvxpy` to `pyproject.toml`;
-    - switch the registry to the convex solvers;
-    - add constraints to `UniverseIn` and the universe editor;
-    - put the turnover penalty in return units for both objectives (it currently mixes Sharpe and
-      variance units);
-    - frontier on cvxpy;
-    - drop the SLSQP code.
+- **11 allocators** on one constraint set (universe-level, edited in the universe dialog).
+- **Next: step 4, dynamic (tactical) allocation.**
+  - A new area "Dynamic".
+  - Library: `portlab/signals/` (timing filters ported from 02 + cross-sectional ranks) and
+    `portlab/dynamic.py` (signal → target weights, run on `backtest.run_backtest` with cash).
 
 ## 3. Architecture
 
@@ -97,7 +88,9 @@ Same stack and conventions as 05 (Derivatives Pricing Lab) and 06 (Tessera). Cop
 - **Crisis replays** use each asset's full history, independent of the research window. Assets that
   had not listed yet are dropped, their weight is redistributed, and this is reported.
 - **Allocators** are called only through `optimization.registry.allocate(key, estimates, constraints)`.
-  Never catch broad exceptions around them.
+  Never catch broad exceptions around them. Infeasible constraints raise `InfeasibleError` (a
+  ValueError, so 422 with the message). New convex methods must build their constraints with
+  `convex._feasible` so every rule means the same thing everywhere.
 - **Data:** `data/prices.py` fetches each ticker's full history once and caches it in memory and on
   disk (12 h). If Yahoo fails, it serves the last copy, then the bundled snapshot
   (`data/snapshot/prices.csv.gz`), flagged as stale.
@@ -148,12 +141,24 @@ Six steps, one commit each (the owner allows committing at milestones without as
      - Jensen's alpha is now over cash.
      - Crisis recovery is measured past the window.
      - The `useLab` debounce compared objects by identity, causing a re-render loop.
-3. **Optimizer core on cvxpy.**
-   - Exact convex solves, with max Sharpe via the standard Schaible/Cornuejols reformulation.
-   - Constraints: long-short and gross leverage, per-asset bounds, group/sector limits (yfinance
-     metadata), tracking error, max holdings.
-   - New allocators: maximum diversification, HERC, NCO, Kelly/growth-optimal, Michaud resampled
-     frontier.
+3. **Optimizer core on cvxpy. Done.**
+   - `optimization/convex.py`: one `Constraints` → cvxpy translation (`_feasible`).
+     - Min variance, max Sharpe and max diversification (Cornuéjols–Tütüncü y = κw), mean-variance.
+     - Min CVaR (Rockafellar–Uryasev LP), Kelly (log growth), robust MV (SOC).
+     - Spinu risk parity with an SLSQP fallback when caps bind.
+     - Turnover-aware rebalancing, with the cost in annual-return units for both objectives.
+     - Efficient frontier.
+     - Max holdings uses the solve → keep largest → re-solve heuristic.
+   - `optimization/hierarchical.py`: HERC (Raffinot), NCO (López de Prado), Michaud resampling.
+   - SLSQP modules deleted (optimizers, frontier, turnover, robust, risk_budgeting, cvar).
+     `risk/tail.py` keeps historical VaR/CVaR.
+   - Universe-level `constraints`:
+     - long-short with a max short and a gross cap, and a group cap (sector/fund category from
+       `data/fundamentals.asset_groups`, snapshot fallback);
+     - max holdings, and tracking error vs equal weight.
+   - The registry flags `respects_constraints`; the UI marks HRP/HERC/NCO/equal weight as
+     "unconstrained" when constraints are active.
+   - The allocation stack draws shorts left of 0%.
 4. **Dynamic (tactical) allocation.** The user picks the universe; the system moves weight between
    those assets *and cash* based on signals.
    - Signals: timing filters ported from 02 (MA/EMA cross, MACD, Donchian, regime filter, …) and

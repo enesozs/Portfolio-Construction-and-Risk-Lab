@@ -136,7 +136,9 @@ interface AllocationStackProps {
   stale: boolean
 }
 
-/** One 100% bar per portfolio, a segment per asset. Assets past the 8th fold into "Other". */
+/** One bar per portfolio, a segment per asset. Assets past the 8th fold into "Other".
+ * Short positions stack to the left of 0% (ECharts stacks each sign separately), so a
+ * long-short bar spans from −short to +long and its total length is the gross exposure. */
 export function AllocationStack({
   title,
   description,
@@ -164,7 +166,7 @@ export function AllocationStack({
           return (
             tooltipHeader(params[0].name) +
             params
-              .filter((p) => p.value > 0.0005)
+              .filter((p) => Math.abs(p.value) > 0.0005)
               .map((p) => tooltipRow(p.color, pct(p.value, 1), p.seriesName))
               .join('')
           )
@@ -172,7 +174,9 @@ export function AllocationStack({
       },
       xAxis: {
         type: 'value',
-        max: 1,
+        // 0–100% for long-only books; wider when shorts or leverage need the room.
+        min: (v: { min: number }) => Math.min(0, Math.floor(v.min * 10) / 10),
+        max: (v: { max: number }) => Math.max(1, Math.ceil(v.max * 10) / 10),
         ...axis,
         axisLabel: { ...axis.axisLabel, formatter: (v: number) => pct(v, 0) },
       },
@@ -188,7 +192,7 @@ export function AllocationStack({
         type: 'bar' as const,
         stack: 'weights',
         barMaxWidth: 26,
-        data: rows.map((r) => Math.max(value(r.weights, seg.members), 0)),
+        data: rows.map((r) => value(r.weights, seg.members)),
         // A 2px surface gap separates neighbouring segments.
         itemStyle: { color: seg.color, borderColor: c.surface, borderWidth: 2 },
       })),

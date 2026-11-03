@@ -1,4 +1,4 @@
-"""Market values for the Black–Litterman prior.
+"""Market values (for the Black–Litterman prior) and groups (for sector/asset-class limits).
 
 Black–Litterman starts from the portfolio the whole market holds, i.e. weights proportional
 to market value. Yahoo reports market capitalisation for stocks and total net assets (fund
@@ -30,10 +30,53 @@ _lock = threading.Lock()
 
 
 @cache
-def _snapshot() -> dict[str, float | None]:
+def _snapshot_file() -> dict:
     if not SNAPSHOT_PATH.exists():
         return {}
-    return json.loads(SNAPSHOT_PATH.read_text())["market_caps"]
+    return json.loads(SNAPSHOT_PATH.read_text())
+
+
+def _snapshot() -> dict[str, float | None]:
+    return _snapshot_file().get("market_caps", {})
+
+
+_groups: dict[str, tuple[float, str]] = {}
+
+
+def fetch_group(ticker: str) -> str | None:
+    """Sector for a stock, fund category for an ETF (Yahoo's classification)."""
+    import yfinance as yf
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        info = yf.Ticker(ticker).info or {}
+    if info.get("quoteType") == "ETF":
+        return info.get("category") or "ETF"
+    return info.get("sector")
+
+
+def asset_groups(tickers: list[str]) -> dict[str, str]:
+    """Group label per ticker: live (cached 24 h), else the snapshot, else "Other"."""
+    now = time.time()
+    out: dict[str, str] = {}
+    snapshot = _snapshot_file().get("groups", {})
+    for ticker in tickers:
+        with _lock:
+            entry = _groups.get(ticker)
+        if entry and now - entry[0] < TTL_SECONDS:
+            out[ticker] = entry[1]
+            continue
+        label: str | None = None
+        if not price_store.OFFLINE:
+            try:
+                label = fetch_group(ticker)
+            except Exception as exc:
+                log.warning("group lookup failed for %s: %s", ticker, exc)
+        if label:
+            with _lock:
+                _groups[ticker] = (now, label)
+        out[ticker] = label or snapshot.get(ticker) or "Other"
+    return out
 
 
 def _fetch(ticker: str) -> float | None:

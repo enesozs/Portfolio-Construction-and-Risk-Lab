@@ -32,7 +32,7 @@ def test_overview_reports_alignment_and_cash() -> None:
 
 def test_portfolios_are_fully_invested_and_ranked() -> None:
     out = post("/construction/portfolios")
-    assert len(out["portfolios"]) == 6
+    assert len(out["portfolios"]) == 11
     for p in out["portfolios"]:
         assert sum(p["weights"].values()) == pytest.approx(1, abs=1e-5)
     assert len(out["frontier"]) > 5
@@ -50,6 +50,7 @@ def test_portfolios_are_fully_invested_and_ranked() -> None:
         ("/construction/tail-risk", {"confidence": 0.95}),
         ("/construction/robust", {}),
         ("/construction/turnover", {"max_turnover": 0.1}),
+        ("/construction/turnover", {"objective": "min_volatility", "cost": 0.02}),
         (
             "/construction/risk-budget",
             {"budgets": {"AAPL": 2, "MSFT": 1, "JNJ": 1, "XOM": 1, "TLT": 1}},
@@ -100,3 +101,37 @@ def test_user_errors_are_422_with_a_message() -> None:
     response = client.post("/api/construction/portfolios", json={"universe": capped})
     assert response.status_code == 422
     assert "cannot add up to 100%" in response.json()["detail"]
+
+
+def _with(**constraints):
+    return {"universe": {**UNIVERSE, "constraints": constraints}}
+
+
+def test_long_short_portfolios_short_and_respect_gross_leverage() -> None:
+    body = _with(long_short=True, max_short=0.3, gross_leverage=1.6)
+    out = client.post("/api/construction/portfolios", json=body).json()
+    by_key = {p["key"]: p for p in out["portfolios"]}
+    w = by_key["max_sharpe"]["weights"]
+    assert sum(abs(v) for v in w.values()) <= 1.6 + 1e-5
+    assert min(w.values()) >= -0.3 - 1e-6
+    # Methods that cannot short say so instead of pretending.
+    assert by_key["hrp"]["respects_constraints"] is False
+
+
+def test_group_cap_limits_each_sector() -> None:
+    universe = {"tickers": ["AAPL", "MSFT", "NVDA", "JNJ", "XOM", "TLT"], "start": "2018-01-01"}
+    body = {"universe": {**universe, "constraints": {"group_cap": 0.35}}}
+    out = client.post("/api/construction/portfolios", json=body).json()
+    w = {p["key"]: p for p in out["portfolios"]}["max_sharpe"]["weights"]
+    assert w["AAPL"] + w["MSFT"] + w["NVDA"] <= 0.35 + 1e-6
+    overview = client.post("/api/universe/overview", json=body).json()
+    assert overview["meta"]["groups"]["MSFT"] == "Technology"
+
+
+def test_holdings_limit_and_infeasible_group_cap() -> None:
+    out = client.post("/api/construction/portfolios", json=_with(max_holdings=3)).json()
+    w = {p["key"]: p for p in out["portfolios"]}["min_variance"]["weights"]
+    assert sum(v > 1e-6 for v in w.values()) <= 3
+    response = client.post("/api/construction/portfolios", json=_with(group_cap=0.1))
+    assert response.status_code == 422
+    assert "groups" in response.json()["detail"]

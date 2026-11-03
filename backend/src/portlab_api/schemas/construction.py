@@ -23,6 +23,7 @@ class PortfolioSummary(BaseModel):
     effective_assets: float
     diversification_ratio: float
     uses_expected_returns: bool
+    respects_constraints: bool
 
 
 class FrontierPoint(BaseModel):
@@ -129,11 +130,12 @@ class CompareResponse(BaseModel):
 
 
 class TurnoverRequest(UniverseRequest):
-    objective: Literal["max_sharpe", "min_variance"] = "max_sharpe"
+    objective: Literal["mean_variance", "min_volatility"] = "mean_variance"
     reference: PortfolioKey = "equal_weight"
-    penalty: float = Field(default=0.25, ge=0, le=5)
-    min_weight: float = Field(default=0.0, ge=0, le=0.5)
-    max_weight: float = Field(default=1.0, gt=0, le=1)
+    risk_aversion: float = Field(default=3.0, ge=0, le=20)
+    """For mean_variance: λ in μᵀw − (λ/2)·wᵀΣw."""
+    cost: float = Field(default=0.01, ge=0, le=0.2)
+    """Annual expected return given up per 100% one-way turnover (0.01 = 1%)."""
     max_turnover: float | None = Field(default=None, ge=0, le=1)
     max_volatility: float | None = Field(default=None, gt=0, le=1)
 

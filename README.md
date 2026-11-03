@@ -51,6 +51,16 @@ Every page works on one shared **research universe**, edited from the bar under 
 - an optional cap on single-asset weights;
 - the cash rate, which is the 13-week Treasury bill yield unless set by hand.
 
+The universe also carries **portfolio constraints**, which every optimising method enforces
+exactly:
+- long-short with a cap per short position and on gross exposure (e.g. 130/30);
+- a cap per sector or asset class (Yahoo's sector for stocks, fund category for ETFs);
+- a maximum number of holdings;
+- a tracking-error limit against equal weight.
+
+The cluster-based methods are long-only by construction, and the tables flag them when
+constraints are active.
+
 The sample starts on the first day *all* chosen assets traded. When a young asset (TSLA,
 listed in 2010) shortens the requested history, the bar says so.
 
@@ -71,9 +81,11 @@ explanation.
 
 ## Construct
 
-- **Portfolios:** six standard allocators side by side:
-  - equal weight, minimum variance, maximum Sharpe;
-  - risk parity, hierarchical risk parity, minimum CVaR.
+- **Portfolios:** eleven allocators side by side:
+  - classical: equal weight, minimum variance, maximum Sharpe;
+  - risk-based: risk parity, maximum diversification, minimum CVaR;
+  - growth and robustness: growth-optimal (Kelly), resampled max Sharpe (Michaud);
+  - cluster-based: HRP, HERC, NCO.
 
   The page shows their allocations, expected and historical statistics, the efficient frontier
   with the capital market line, and a ranking for each objective.
@@ -160,6 +172,14 @@ pins it to a concrete number:
   sleeve is never mistaken for skill.
 - **Robust mean-variance** penalises the standard error of the *annualised* mean,
   √(252·σ²/T), checked against simulation.
+- **Exact convex optimisation** (cvxpy) replaces SLSQP started from equal weights, which
+  stopped short of the optimum.
+  - Max Sharpe and maximum diversification use the Cornuéjols–Tütüncü change of variables, so
+    linear constraints carry over exactly.
+  - Unconstrained solutions match the closed forms Σ⁻¹1/1ᵀΣ⁻¹1 and Σ⁻¹(μ − r_f).
+  - Under caps, no random feasible portfolio beats them.
+  - Risk parity solves Spinu's convex problem.
+  - NCO reproduces global minimum variance exactly when clusters are independent.
 - **Ledoit–Wolf shrinkage** is implemented directly and matches scikit-learn to 1e-19.
 - **Monte Carlo errors** are reported for every simulated statistic (batch means), and the
   simulated mean matches the model's analytic mean within that error.
@@ -181,6 +201,8 @@ frontend/  React + TypeScript ── fetch /api/* ──▶  backend/src/portlab
   - market values.
 - `portlab.optimization.registry`: every allocator behind one signature,
   `(Estimates, Constraints) → weights`.
+- `portlab.optimization.convex`: one `Constraints` set translated into cvxpy constraints in one
+  place, so every method means the same thing by "130/30" or "≤40% per sector".
 - `portlab.backtest`: the shared daily simulator used by walk-forward and rebalancing.
 - Frontend TypeScript types are generated from the API's OpenAPI schema (`make api-types`), so
   the two halves cannot drift apart.
@@ -189,7 +211,7 @@ frontend/  React + TypeScript ── fetch /api/* ──▶  backend/src/portlab
 
 | Area | Choice |
 |---|---|
-| Library | Python 3.13, NumPy, pandas, SciPy |
+| Library | Python 3.13, NumPy, pandas, SciPy, cvxpy (Clarabel) |
 | Market data | yfinance (cached per ticker, bundled snapshot fallback) |
 | API | FastAPI + Pydantic v2 |
 | Frontend | Vite 8, React 19, TypeScript 6, Tailwind CSS 4, coss UI (Base UI), ECharts 6, TanStack Query |

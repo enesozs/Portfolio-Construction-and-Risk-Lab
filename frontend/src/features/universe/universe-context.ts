@@ -7,6 +7,7 @@ import {
 import { createContext, useContext, useMemo } from 'react'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { api, type OverviewResponse, type UniverseIn } from '@/lib/api'
+import { fixed, pct } from '@/lib/format'
 
 export const STORAGE_KEY = 'portlab-universe'
 
@@ -44,6 +45,32 @@ export const PRESETS: { id: string; label: string; description: string; tickers:
     tickers: ['SPY', 'TLT', 'IEF'],
   },
 ]
+
+/* Portfolio constraints (edited in the universe dialog). */
+export type ConstraintsIn = NonNullable<UniverseIn['constraints']>
+
+export const DEFAULT_CONSTRAINTS: Required<ConstraintsIn> = {
+  long_short: false,
+  max_short: 0.2,
+  gross_leverage: 1.6,
+  group_cap: null,
+  max_holdings: null,
+  max_tracking_error: null,
+}
+
+/** One-line summary for the universe bar, or null when only the defaults apply. */
+export function constraintsSummary(c: ConstraintsIn | undefined): string | null {
+  if (!c) return null
+  const parts: string[] = []
+  if (c.long_short)
+    parts.push(
+      `long-short (≤${pct(c.max_short ?? 0.2, 0)} short, ${fixed(c.gross_leverage ?? 1.6, 1)}× gross)`,
+    )
+  if (c.group_cap != null) parts.push(`≤${pct(c.group_cap, 0)} per group`)
+  if (c.max_holdings != null) parts.push(`≤${c.max_holdings} holdings`)
+  if (c.max_tracking_error != null) parts.push(`TE ≤${pct(c.max_tracking_error, 1)}`)
+  return parts.length ? parts.join(' · ') : null
+}
 
 export const DEFAULT_UNIVERSE: UniverseIn = {
   tickers: PRESETS[0].tickers,
