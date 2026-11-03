@@ -1,7 +1,21 @@
-__pycache__/
-.pytest_cache/
+# Python
 .venv/
-*.pyc
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+.cache/
+
+# Node
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# OS / editor
 .DS_Store
-.streamlit/secrets.toml
-PROJECT_ROADMAP.md
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
