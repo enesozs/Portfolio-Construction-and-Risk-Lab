@@ -23,7 +23,7 @@ def build_research_report(
     sections = [
         "# Portfolio Research Report",
         "",
-        f"**Universe:** {', '.join(tickers)}",
+        f"**Universe:** {', '.join(tickers)}  ",
         f"**Selected portfolio:** {selected_portfolio}",
         "",
         "## Executive Summary",

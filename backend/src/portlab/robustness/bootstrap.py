@@ -26,7 +26,7 @@ def _moving_block_sample(
     while sum(len(x) for x in pieces) < n:
         start = int(rng.integers(0, n - block_size + 1))
         pieces.append(clean.iloc[start : start + block_size])
-    return pd.concat(pieces, axis="index").iloc[:n].reset_index(drop=True)
+    return pd.concat(pieces, ignore_index=True).iloc[:n]
 
 
 def bootstrap_weight_stability(

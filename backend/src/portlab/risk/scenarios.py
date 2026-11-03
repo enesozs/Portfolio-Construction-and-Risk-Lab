@@ -52,6 +52,10 @@ def replay_historical_period(
 ) -> CrisisReplay:
     """Apply today's static weights to the assets' actual returns during a past period.
 
+    `recovery_trading_days` counts days from the trough until the portfolio regains its
+    pre-crisis peak, continuing past the period end with the same drifting holdings (NaN if
+    it never did within the available data).
+
     `returns` should cover each asset's full history (NaN before it listed), independent of
     the research sample. Assets that did not trade for the whole period are dropped and the
     remaining weights rescaled to sum to one, and the result reports which ones were missing.
@@ -75,7 +79,18 @@ def replay_historical_period(
     peak = np.maximum.accumulate(np.concatenate([[1.0], wealth.to_numpy(dtype=float)]))[1:]
     drawdown = pd.Series(wealth.to_numpy(dtype=float) / peak - 1.0, index=wealth.index)
     trough = int(np.argmin(drawdown.to_numpy(dtype=float)))
-    recovered = np.flatnonzero(wealth.to_numpy(dtype=float)[trough:] >= peak[trough])
+    # Crisis windows usually end near the bottom, so recovery is measured on the data that
+    # follows: the same holdings, left to drift, until they regain the pre-crisis peak.
+    after = returns.loc[pd.Timestamp(end) + pd.Timedelta(days=1) :, available].dropna(how="any")
+    drifted = rescaled * (1.0 + period[available]).prod()
+    tail = (
+        float(wealth.iloc[-1])
+        * (1.0 + portfolio_returns_series(after, drifted / drifted.sum())).cumprod()
+        if len(after)
+        else pd.Series(dtype=float)
+    )
+    path = np.concatenate([wealth.to_numpy(dtype=float)[trough:], tail.to_numpy(dtype=float)])
+    recovered = np.flatnonzero(path >= peak[trough])
     return CrisisReplay(
         wealth=wealth,
         drawdown=drawdown,

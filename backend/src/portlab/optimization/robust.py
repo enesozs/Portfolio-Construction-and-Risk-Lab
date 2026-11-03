@@ -5,6 +5,15 @@ import pandas as pd
 from scipy.optimize import minimize
 
 
+def annual_mean_standard_error(annual_variance: np.ndarray, observations: int) -> np.ndarray:
+    """Standard error of an annualised mean estimated from `observations` daily returns.
+
+    The annual mean is 252 × the daily mean, whose standard error is σ_daily/√T, so the
+    annual standard error is 252·σ_daily/√T = √(252·σ²_annual/T).
+    """
+    return np.sqrt(252.0 * np.maximum(annual_variance, 0.0) / observations)
+
+
 def robust_mean_variance(
     expected_returns: pd.Series,
     covariance: pd.DataFrame,
@@ -30,7 +39,7 @@ def robust_mean_variance(
         raise ValueError("weight bounds are infeasible")
     mu = expected_returns.to_numpy(dtype=float)
     cov = covariance.reindex(index=assets, columns=assets).to_numpy(dtype=float)
-    mean_se = np.sqrt(np.maximum(np.diag(cov), 0.0) / observations)
+    mean_se = annual_mean_standard_error(np.diag(cov), observations)
 
     def objective(w: np.ndarray) -> float:
         ret = float(w @ mu)

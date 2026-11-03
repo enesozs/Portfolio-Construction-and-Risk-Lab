@@ -191,7 +191,7 @@ def load_prices(tickers: list[str]) -> PriceHistory:
     if unknown:
         raise DataError(f"no price data for {', '.join(unknown)} (check the ticker symbols)")
 
-    prices = pd.concat([found[t] for t in symbols], axis=1).sort_index()
+    prices = pd.concat([found[t] for t in symbols], axis=1, sort=True)
     prices.columns = symbols
     return PriceHistory(prices=prices, stale=frozenset(stale))
 

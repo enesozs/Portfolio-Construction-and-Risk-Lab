@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from portlab._pandas import column
 from portlab.estimators.covariance import sample_covariance
@@ -325,3 +326,28 @@ def test_diversification_breakdown_is_finite():
     result = diversification_breakdown(w, cov)
     assert np.isclose(result["effective_assets_hhi"], 2.0)
     assert np.isfinite(result["diversification_ratio"])
+
+
+def test_annual_mean_standard_error_matches_simulation():
+    from portlab.optimization.robust import annual_mean_standard_error
+
+    rng = np.random.default_rng(9)
+    daily_vol, days = 0.01, 500
+    annual_means = rng.normal(0.0, daily_vol, size=(4000, days)).mean(axis=1) * 252
+    predicted = annual_mean_standard_error(np.array([daily_vol**2 * 252]), days)[0]
+    assert np.std(annual_means) == pytest.approx(predicted, rel=0.05)
+
+
+def test_jensen_alpha_is_measured_over_cash():
+    from portlab.portfolio.attribution import benchmark_statistics
+
+    rng = np.random.default_rng(12)
+    bench = pd.Series(rng.normal(0.0004, 0.01, size=500))
+    cash = pd.Series(0.0002, index=bench.index)
+    # Half the benchmark, half cash: zero alpha once cash is accounted for.
+    port = 0.5 * bench + 0.5 * cash
+    stats = benchmark_statistics(port, bench, cash_returns=cash)
+    assert stats["beta"] == pytest.approx(0.5)
+    assert stats["alpha"] == pytest.approx(0.0, abs=1e-12)
+    # Ignoring cash would misread the cash leg as alpha.
+    assert benchmark_statistics(port, bench)["alpha"] == pytest.approx(0.5 * 0.0002 * 252)

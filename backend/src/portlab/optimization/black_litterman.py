@@ -32,6 +32,11 @@ def black_litterman_posterior(
 ) -> pd.Series:
     """Return Black-Litterman posterior expected returns.
 
+    Each view's variance is set from its confidence as a multiple of τ·pᵀΣp, so τ scales both
+    the prior and the views equally and cancels out of the posterior *mean* (it would matter
+    only for the posterior covariance, which is not used here). Confidence alone decides how
+    far a view pulls: 100% means the posterior matches the view.
+
     ``views`` maps an asset to ``(annual_expected_return, confidence)`` where
     confidence is in (0, 1]. Views are absolute views and intentionally simple
     enough for an interactive research application.

@@ -28,7 +28,7 @@ def regress_factor_exposures(
     factors: pd.DataFrame,
     periods_per_year: int = 252,
 ) -> tuple[pd.Series, dict[str, float]]:
-    joined = pd.concat([portfolio_returns.rename("portfolio"), factors], axis=1).dropna()
+    joined = pd.concat([portfolio_returns.rename("portfolio"), factors], axis=1, sort=True).dropna()
     if len(joined) < max(30, factors.shape[1] + 5):
         raise ValueError("insufficient overlapping observations for factor regression")
     y = joined["portfolio"].to_numpy(dtype=float)

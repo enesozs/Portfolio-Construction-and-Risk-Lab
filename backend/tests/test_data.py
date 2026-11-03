@@ -36,3 +36,5 @@ def test_crisis_replay_redistributes_assets_that_did_not_exist_yet() -> None:
     assert replay.missing == ["TSLA"]
     assert replay.missing_weight == pytest.approx(0.5)
     assert replay.stats["max_drawdown"] < -0.3
+    # AAPL regained its 2008 peak within a few years of the March 2009 trough.
+    assert 100 < replay.stats["recovery_trading_days"] < 800

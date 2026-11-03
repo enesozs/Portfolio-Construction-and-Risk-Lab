@@ -31,12 +31,28 @@ It is an **educational research tool**, not investment advice. Priorities, in or
 
 ## 2. Current state (2026-11-03)
 
-- **Step 1 (fixes and restructure) is done.**
-  - Streamlit has been removed; earlier versions are in git history.
-  - The library lives in `backend/src/portlab`.
-- **Next: step 2**, the FastAPI app plus the React web app at parity with the old Streamlit labs.
-
----
+- **Steps 1–2 are done.** The library, API and web app are at parity with the old Streamlit labs.
+- **Six areas, 16 pages**:
+  - Universe: overview.
+  - Construct: portfolios, estimators, Black–Litterman, tail risk, robust & turnover, risk budgets.
+  - Risk: decomposition, stress & scenarios, crisis replay, Monte Carlo.
+  - Validate: walk-forward, rebalancing, stability.
+  - Attribution.
+  - Report.
+- **Next: step 3**, the optimizer core on cvxpy.
+  - Already written and tested, but not yet wired into the registry/API:
+    - `optimization/convex.py`: Constraints, min variance, max Sharpe via Cornuéjols–Tütüncü, max
+      diversification, mean-variance, min CVaR, Kelly, Spinu risk parity;
+    - `optimization/hierarchical.py`: HERC, NCO, Michaud resampling;
+    - `data/fundamentals.asset_groups`, plus the groups in the snapshot.
+  - Remaining for step 3:
+    - add `cvxpy` to `pyproject.toml`;
+    - switch the registry to the convex solvers;
+    - add constraints to `UniverseIn` and the universe editor;
+    - put the turnover penalty in return units for both objectives (it currently mixes Sharpe and
+      variance units);
+    - frontier on cvxpy;
+    - drop the SLSQP code.
 
 ## 3. Architecture
 
@@ -51,8 +67,14 @@ backend/
     risk/  research/  robustness/  simulation/  portfolio/  allocation/  reporting/
   src/portlab_api/        FastAPI routes + pydantic schemas (step 2)
   tests/                  pytest, offline (PORTLAB_OFFLINE=1, set in conftest)
-frontend/                 Vite + React + coss UI (Base UI) + ECharts (step 2)
-e2e/                      Playwright smoke + screenshot scripts (step 2)
+frontend/
+  src/areas.ts            route table: every area and page (drives the router and tabs)
+  src/features/<area>/    one file per page (`<name>-page.tsx`, default export)
+  src/features/universe/  universe-context.ts (shared universe, useLab, useOverview), provider, bar
+  src/lib/api.ts          typed client; types generated into src/lib/api-types.ts
+  src/components/charts/  echart wrapper, theme (palette), TimeChart, WeightBars,
+                          AllocationStack, CorrelationHeatmap, LinesChart, HistogramChart
+e2e/smoke.py              every page, no console/API errors, universe editor interactions
 ```
 
 Same stack and conventions as 05 (Derivatives Pricing Lab) and 06 (Tessera). Copy patterns from there.
@@ -83,6 +105,20 @@ Same stack and conventions as 05 (Derivatives Pricing Lab) and 06 (Tessera). Cop
   - Regenerate it with the script in §6.
 - **Monte Carlo:** asset-level (normal / joint Student-t / block bootstrap). Every headline number has
   a batch-means standard error.
+- **Frontend data:** pages query only through `useLab(name, api.x, params)`.
+  - It adds the shared universe and debounces the *serialised* params, so inline object literals
+    are fine.
+  - Previous results stay visible, dimmed, while refetching.
+- **API types** are generated (`make api-types`) after any pydantic schema change. Never edit
+  `api-types.ts` by hand.
+- **Charts** follow the dataviz rules:
+  - Categorical palette in `theme.ts`: eight slots assigned by universe order (`assetColor`); past
+    eight, assets fold into "Other".
+  - Weight comparisons put assets on the axis, with at most 4 allocations as series.
+  - No dual axes.
+  - Every card has a `guide` ("How to read this chart").
+  - Log axes switch on only when the data spans more than 10×.
+  - Charts honour `prefers-reduced-motion`; the e2e and screenshot runs use it.
 
 ---
 
@@ -100,9 +136,18 @@ Six steps, one commit each (the owner allows committing at milestones without as
    - Two crises added: dot-com bust and the 2025 tariff shock.
    - Asset-level Monte Carlo with standard errors.
    - Market values for the Black–Litterman prior: Yahoo market cap for stocks, fund size for ETFs.
-2. **Web app at parity.** FastAPI routes for every Streamlit lab. React app with one shared universe
-   context (tickers, dates, estimators, constraints, cash rate). Removed Streamlit README content is
-   replaced. Dockerfile, render.yaml, vercel.json, Makefile, e2e smoke.
+2. **Web app at parity. Done.**
+   - API and frontend:
+     - FastAPI routes for every lab, each with an offline API test.
+     - React app on one shared universe (universe bar and editor dialog), 16 pages.
+     - Types generated from OpenAPI.
+   - Tooling: Dockerfile, render.yaml, vercel.json, Makefile, e2e smoke, README with screenshots.
+   - Fixes found while building:
+     - The robust MV standard error was annualised wrongly (√252 too small).
+     - Black–Litterman τ cancels from the posterior mean, so the control was removed.
+     - Jensen's alpha is now over cash.
+     - Crisis recovery is measured past the window.
+     - The `useLab` debounce compared objects by identity, causing a re-render loop.
 3. **Optimizer core on cvxpy.**
    - Exact convex solves, with max Sharpe via the standard Schaible/Cornuejols reformulation.
    - Constraints: long-short and gross leverage, per-asset bounds, group/sector limits (yfinance
@@ -135,9 +180,14 @@ Six steps, one commit each (the owner allows committing at milestones without as
 ## 5. Commands
 
 ```bash
-make install   # venv + backend[api,dev] (+ frontend once it exists)
+make install   # venv + backend[api,dev] + npm install
+make dev       # API on :8030 and Vite on :5183 → http://localhost:5183
 make test      # offline pytest
-make lint      # ruff format + ruff check + pyright
+make e2e       # Playwright smoke over every page (needs `make dev` + Chrome)
+make lint      # ruff, pyright, tsc, oxlint, prettier
+make check     # lint + test + frontend build
+make api-types # regenerate frontend types after a schema change
+make serve     # built UI served by FastAPI on :8030
 ```
 
 ## 6. Maintenance
