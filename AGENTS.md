@@ -31,21 +31,27 @@ It is an **educational research tool**, not investment advice. Priorities, in or
 
 ## 2. Current state (2026-11-03)
 
-- **Steps 1–4 are done.**
-- **Seven areas, 17 pages**:
+- **All six roadmap steps are done.**
+- **Eight areas, 21 pages**:
   - Universe: overview.
   - Construct: portfolios, estimators, Black–Litterman, tail risk, robust & turnover, risk budgets.
   - Dynamic: dynamic allocation.
-  - Risk: decomposition, stress & scenarios, crisis replay, Monte Carlo.
-  - Validate: walk-forward, rebalancing, stability.
-  - Attribution.
+  - Risk: decomposition, stress & scenarios, crisis replay, VaR backtest, Monte Carlo.
+  - Validate: walk-forward, rebalancing, stability, compare methods.
+  - Attribution: benchmark + Fama–French factor lab.
+  - Plan: my portfolio, goal planner.
   - Report.
-- **11 allocators** on one constraint set (universe-level, edited in the universe dialog).
-- **Next: step 5.**
-  - Risk models: t-copula and regime-switching Monte Carlo; component VaR/ES; VaR backtests.
-  - Covariance denoising.
-  - A Fama–French factor lab.
-  - PBO/CPCV.
+- **Possible next steps** (not scheduled):
+  - a shared `SeriesPicker` (the ≤4-line chip picker is duplicated in the compare and factor
+    pages);
+  - `HistogramChart` with `yName` and exact markers;
+  - a `blocks` field in the PBO response;
+  - "unconstrained" flags on the compare table;
+  - ECharts dataZoom;
+  - CPCV, which was not built (CSCV/PBO covers the overfitting question);
+  - DCC-GARCH;
+  - a "today" (EWMA) component VaR;
+  - deployment to ozsoy.org.
 
 ## 3. Architecture
 
@@ -99,8 +105,10 @@ Same stack and conventions as 05 (Derivatives Pricing Lab) and 06 (Tessera). Cop
   (`data/snapshot/prices.csv.gz`), flagged as stale.
   - The snapshot covers 28 common tickers back to 1995, plus `^IRX`.
   - Regenerate it with the script in §6.
-- **Monte Carlo:** asset-level (normal / joint Student-t / block bootstrap). Every headline number has
-  a batch-means standard error.
+- **Monte Carlo:** asset-level (normal / joint Student-t / t-copula / regime / block bootstrap). Every
+  headline number has a batch-means standard error.
+- **Long-horizon planning** must not silently use a short sample's mean: the planner defaults to an
+  explicit return assumption and shows the sample's mean beside it.
 - **Signals** are computed on each asset's *full* price history (`load_prices`), so long windows
   are ready at the sample start. A value on day t uses closes ≤ t (tested for every signal by
   truncation).
@@ -192,13 +200,40 @@ Six steps, one commit each (the owner allows committing at milestones without as
    - Runs on the shared engine, with costs and turnover caps.
    - Always compared with buy-and-hold of the user's base weights. Deflated Sharpe over the
      configurations tried.
-5. **Risk models, factors, validation rigour.**
+5. **Risk models, factors, validation rigour. Done.**
+   - Risk models:
+     - `risk/var_backtest.py`: four rolling VaR models, Kupiec / Christoffersen / conditional
+       coverage, Basel traffic light, Euler component VaR/ES.
+     - `simulation/monte_carlo.py`: `t_copula` (empirical marginals + Student-t copula on
+       normal scores) and `regime` (2-state Markov; calm/stress split by 2-means on log
+       rolling vol).
+   - Covariance: `estimators/covariance.py` adds `denoised` (Marchenko–Pastur
+     constant-residual-eigenvalue).
+   - Factors:
+     - `data/factors.py`: Ken French daily 5 factors + momentum, cached daily with a snapshot
+       `ff_factors.csv.gz`.
+     - `research/factor_model.py`: Newey–West OLS, Euler factor risk shares, rolling betas.
+       This replaces the ETF proxies.
+   - Validation: `validation/compare.py` has the all-methods walk-forward (resampled max Sharpe
+     excluded for speed), the Memmel–Jobson–Korkie Sharpe test, CSCV PBO (10 blocks → 252
+     splits) and covariance estimators out of sample.
+   - UI: VaR backtest page, two new MC models with a regime card, compare-methods page,
+     factor lab section.
+   - Original plan, kept for reference:
    - Risk models: t-copula and regime-switching Monte Carlo; component VaR/ES; VaR backtests
      (Kupiec, Christoffersen).
    - Covariance: Marchenko–Pastur denoising, factor covariance, DCC-GARCH.
    - Factors: Fama–French factor lab, replacing the ETF proxies.
    - Validation: all-methods walk-forward comparison with significance tests, PBO, CPCV.
-6. **My portfolio and goal planner.**
+6. **My portfolio and goal planner. Done.**
+   - `holdings.py`: parse, value, and a trade list (whole/fractional shares, never overdraws,
+     min trade, costs, cash buffer).
+   - `planner.py`: monthly simulation with contributions/withdrawals in real terms, glide path to
+     T-bills, expected-return override (default 6% in the API), goal and ruin probabilities, safe
+     withdrawal by bisection, sequence-of-returns quintiles.
+   - API: `/portfolio/holdings`, `/planner`.
+   - UI: Plan area (my portfolio, goal planner); saved universes in the dialog (localStorage).
+   - Original plan, kept for reference:
    - My portfolio: holdings CSV import, current vs optimized, a trade list with share rounding and
      costs, saved configurations.
    - Goal planner: contributions/withdrawals, probability of reaching a goal or of ruin, glide paths,

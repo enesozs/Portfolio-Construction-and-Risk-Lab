@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 ReturnMethod = Literal["arithmetic", "geometric", "ewma"]
-CovMethod = Literal["sample", "ledoit_wolf", "ewma"]
+CovMethod = Literal["sample", "ledoit_wolf", "ewma", "denoised"]
 PortfolioKey = Literal[
     "equal_weight",
     "min_variance",

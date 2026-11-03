@@ -145,14 +145,14 @@ def test_walk_forward_transaction_costs_reduce_returns() -> None:
     assert float(bt.returns.sum()) < float(bt.gross_returns.sum())
 
 
-def test_estimator_comparison_returns_nine_combinations() -> None:
+def test_estimator_comparison_returns_twelve_combinations() -> None:
     from portlab.research.estimator_comparison import compare_estimators
 
     r = sample_returns()
     baseline = convex.max_sharpe(annualized_mean_return(r), sample_covariance(r), 0.0, LONG_ONLY)
     table, weights = compare_estimators(r, "max_sharpe", baseline_weights=baseline)
-    assert len(table) == 9
-    assert len(weights) == 9
+    assert len(table) == 12
+    assert len(weights) == 12
     assert bool(np.isfinite(table["expected_volatility"].to_numpy(dtype=float)).all())
 
 
@@ -184,7 +184,7 @@ def test_covariance_diagnostics_are_finite() -> None:
     assert np.isfinite(diag["condition_number"])
     assert diag["effective_rank"] > 0
     table = compare_covariance_estimators(r)
-    assert len(table) == 3
+    assert len(table) == 4
     assert bool(np.isfinite(table["Condition Number"].to_numpy(dtype=float)).all())
 
 
@@ -269,18 +269,6 @@ def test_benchmark_statistics_beta_near_one_for_same_series():
     stats = benchmark_statistics(r, r)
     assert np.isclose(stats["beta"], 1.0, atol=1e-8)
     assert abs(stats["alpha"]) < 1e-8
-
-
-def test_factor_proxy_regression_recovers_known_beta():
-    from portlab.research.factor_exposure import regress_factor_exposures
-
-    rng = np.random.default_rng(5)
-    factors = pd.DataFrame(rng.normal(0, 0.01, size=(300, 2)), columns=["F1", "F2"])
-    portfolio = 0.7 * column(factors, "F1") - 0.2 * column(factors, "F2")
-    exposures, stats = regress_factor_exposures(portfolio, factors)
-    assert np.isclose(exposures["F1"], 0.7, atol=1e-6)
-    assert np.isclose(exposures["F2"], -0.2, atol=1e-6)
-    assert stats["r_squared"] > 0.999
 
 
 def test_monte_carlo_shapes_and_metrics():

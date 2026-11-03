@@ -11,7 +11,7 @@ import json
 
 import pandas as pd
 
-from portlab.data import fundamentals, prices
+from portlab.data import factors, fundamentals, prices
 
 TICKERS = [
     *["AAPL", "MSFT", "NVDA", "JNJ", "XOM", "TLT", "TSLA", "GOOGL", "AMZN", "META", "JPM"],
@@ -19,6 +19,7 @@ TICKERS = [
     *["EFA", "EEM", "AGG", "IEF", "SHY", "GLD", "VNQ", "DBC", "^IRX"],
 ]
 START = "1995-01-01"
+"""Prices from 1995; Fama–French factors from the same date."""
 
 
 def main() -> None:
@@ -43,6 +44,7 @@ def main() -> None:
         "groups": {t: fundamentals.fetch_group(t) or "Other" for t in names},
     }
     fundamentals.SNAPSHOT_PATH.write_text(json.dumps(payload, indent=1) + "\n")
+    factors.download().loc[START:].to_csv(factors.SNAPSHOT_PATH, float_format="%.6g")
     print(f"snapshot: {frame.shape[1]} series, {frame.index[0].date()} → {payload['as_of']}")
 
 

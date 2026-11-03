@@ -8,7 +8,7 @@ from portlab.portfolio.metrics import portfolio_return, portfolio_sharpe, portfo
 from portlab.risk.decomposition import effective_number_of_assets
 
 RETURN_METHODS = ("arithmetic", "geometric", "ewma")
-COVARIANCE_METHODS = ("sample", "ledoit_wolf", "ewma")
+COVARIANCE_METHODS = ("sample", "ledoit_wolf", "ewma", "denoised")
 
 
 def compare_estimators(

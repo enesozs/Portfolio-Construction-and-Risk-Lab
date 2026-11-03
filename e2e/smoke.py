@@ -24,11 +24,15 @@ PAGES = [
     ("/risk", None),
     ("/risk/stress", None),
     ("/risk/crises", None),
+    ("/risk/var", None),
     ("/risk/simulation", None),
     ("/validate", None),
     ("/validate/rebalancing", None),
     ("/validate/bootstrap", None),
+    ("/validate/compare", None),
     ("/attribution", None),
+    ("/plan", "My portfolio"),
+    ("/plan/goals", "Goal planner"),
     ("/report", None),
 ]
 
@@ -120,6 +124,21 @@ def main() -> int:
         expect(page.get_by_text("deflated for 15 variants")).to_be_visible()
         expect(page.get_by_role("columnheader", name="Score")).to_be_visible()
         shot(page, "dynamic_dual_momentum")
+
+        # My portfolio: a holding outside the universe is priced, flagged and sold.
+        page.get_by_role("link", name="Plan").first.click()
+        settle(page)
+        page.get_by_label("Holdings").fill("AAPL 20\nMSFT 10\nGLD 5")
+        settle(page)
+        expect(page.get_by_text("GLD is not in the research universe")).to_be_visible()
+        expect(page.get_by_text("Sell 5")).to_be_visible()
+
+        # A universe can be saved by name and appears in the dialog.
+        page.get_by_role("button", name="Edit universe").click()
+        page.get_by_label("Name for the saved universe").fill("Smoke test")
+        page.get_by_role("button", name="Save", exact=True).click()
+        expect(page.get_by_role("button", name="Delete Smoke test")).to_be_visible()
+        page.get_by_role("button", name="Cancel").click()
 
         # Bad input is reported, not crashed on.
         page.get_by_role("button", name="Edit universe").click()

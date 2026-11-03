@@ -60,6 +60,7 @@ def test_portfolios_are_fully_invested_and_ranked() -> None:
         ("/risk/stress", {"portfolio": "equal_weight"}),
         ("/risk/scenario", {"portfolio": "equal_weight", "shocks": {"AAPL": -0.3}}),
         ("/risk/simulation", {"portfolio": "hrp", "n_paths": 400, "horizon_days": 63}),
+        ("/risk/simulation", {"model": "t_copula", "n_paths": 400, "horizon_days": 21}),
         ("/validation/walk-forward", {"method": "risk_parity"}),
         ("/validation/rebalancing", {"portfolio": "equal_weight"}),
         ("/validation/bootstrap", {"method": "min_variance", "n_bootstrap": 20}),
@@ -167,3 +168,76 @@ def test_dynamic_rejects_mismatched_signals() -> None:
     )
     assert response.status_code == 422
     assert "ranking signal" in response.json()["detail"]
+
+
+def test_var_backtest_reports_every_model() -> None:
+    out = post("/risk/var-backtest", portfolio="equal_weight", confidence=0.99)
+    assert [m["model"] for m in out["models"]] == [
+        "historical",
+        "normal",
+        "ewma",
+        "filtered_historical",
+    ]
+    assert all(m["traffic_light"] in {"green", "yellow", "red"} for m in out["models"])
+    assert sum(c["component_es"] for c in out["components"]) == pytest.approx(out["es"])
+
+
+def test_regime_simulation_describes_the_regimes() -> None:
+    out = post("/risk/simulation", model="regime", n_paths=400, horizon_days=63)
+    regime = out["regime"]
+    assert regime["stressed_volatility"] > regime["calm_volatility"]
+    assert 0 < regime["share_stressed"] < 1
+
+
+def test_fama_french_exposures() -> None:
+    out = post("/attribution/factors", portfolio="equal_weight")
+    market = next(f for f in out["factors"] if f["key"] == "Mkt-RF")
+    assert 0.3 < market["beta"] < 1.5 and market["t_stat"] > 5
+    assert {a["ticker"] for a in out["assets"]} == set(UNIVERSE["tickers"])
+    assert out["stale"] is True  # offline tests read the bundled snapshot
+
+
+def test_compare_all_methods_with_overfitting_and_estimators() -> None:
+    out = post("/validation/compare", rebalance_every=63)
+    keys = {m["key"] for m in out["methods"]}
+    assert "equal_weight" in keys and "resampled" not in keys
+    assert 0 <= out["overfitting"]["pbo"] <= 1
+    assert out["overfitting"]["splits"] == 252
+    assert {e["estimator"] for e in out["estimators"]} == {
+        "sample",
+        "ledoit_wolf",
+        "ewma",
+        "denoised",
+    }
+
+
+def test_holdings_to_trades() -> None:
+    out = post(
+        "/portfolio/holdings",
+        holdings="AAPL 20\nMSFT $3000\nGLD 5\nbad line",
+        cash=2000,
+        target="risk_parity",
+    )
+    assert out["outside_universe"] == ["GLD"]
+    assert out["problems"] == ["line 4: 'line' is not a number"]
+    gld = next(o for o in out["orders"] if o["ticker"] == "GLD")
+    assert gld["target_shares"] == 0 and gld["trade_shares"] == -5
+    assert out["cash_after"] >= 0
+    assert out["current"] is None and out["after"]["volatility"] > 0
+
+
+def test_planner_probabilities() -> None:
+    out = post(
+        "/planner",
+        initial=500_000,
+        monthly_contribution=0,
+        years=25,
+        retire_year=0,
+        annual_withdrawal=25_000,
+        goal=None,
+        n_paths=500,
+    )
+    assert 0 <= out["probability_ruin"] <= 1
+    assert out["safe_withdrawal_rate"] is not None and 0 < out["safe_withdrawal_rate"] < 0.5
+    assert len(out["sequence"]) == 5
+    assert len(out["p50"]) == 26

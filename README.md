@@ -28,7 +28,7 @@ The project is built around one question:
 
 - [Application overview](#application-overview)
 - Areas: [Universe](#universe) · [Construct](#construct) · [Dynamic](#dynamic) · [Risk](#risk) ·
-  [Validate](#validate) · [Attribution](#attribution) · [Report](#report)
+  [Validate](#validate) · [Attribution](#attribution) · [Plan](#plan) · [Report](#report)
 - [Correctness](#correctness)
 - [Architecture](#architecture)
 - [Technology](#technology)
@@ -137,9 +137,18 @@ into cash.
   - Assets that had not listed yet are reported and their weight redistributed.
   - Recovery time is measured past the end of the crisis window, until the holdings regained
     their pre-crisis peak.
-- **Monte Carlo:** asset-level simulation under three models:
+- **VaR backtest:** rolling out-of-sample 1-day VaR from four models (historical, normal,
+  EWMA/RiskMetrics, filtered historical simulation), each tested three ways:
+  - Kupiec: is the exception rate right?
+  - Christoffersen: do exceptions cluster?
+  - conditional coverage: both at once.
+
+  The page also shows the Basel traffic light and component (Euler) VaR and ES per asset.
+- **Monte Carlo:** asset-level simulation under five models:
   - correlated normal returns;
   - a joint Student-t, where fat tails hit all assets on the same day;
+  - a t-copula on each asset's own historical distribution;
+  - a two-regime Markov model (calm and stressed, each with its own covariance);
   - a block bootstrap of history.
 
   Weights can drift or be rebalanced. Results are a fan chart, terminal-return and drawdown
@@ -163,12 +172,48 @@ into cash.
   far. The page weighs cost against tracking error.
 - **Stability:** resample history (IID or block bootstrap), re-optimise, and see the
   distribution of each weight.
+- **Compare methods:** every allocator walked forward on identical settings.
+  - Each Sharpe ratio is tested against equal weight (Jobson–Korkie/Memmel).
+  - The probability of backtest overfitting comes from combinatorially symmetric
+    cross-validation.
+  - The four covariance estimators (including Marchenko–Pastur denoising) are compared on
+    realised minimum-variance volatility.
+
+<p align="center">
+  <img src="docs/screenshots/validate-compare.jpg" alt="Compare methods: out-of-sample table with significance tests, probability of backtest overfitting, covariance estimators" width="95%">
+</p>
 
 ## Attribution
 
 - Alpha, beta, tracking error, information ratio and up/down capture against any benchmark
-  ticker.
-- Contributions per asset, and exposures to ETF-based style-factor proxies.
+  ticker, with return contributions per asset.
+- **Fama–French factor lab** (5 factors + momentum from Kenneth French's data library):
+  - exposures with Newey–West standard errors, alpha and its t-statistic;
+  - the share of risk from each factor vs idiosyncratic risk;
+  - rolling one-year betas, and every asset's own exposures.
+
+## Plan
+
+<p align="center">
+  <img src="docs/screenshots/plan-goals.jpg" alt="Goal planner: real-wealth fan chart, probability of reaching a goal and of running out, sequence-of-returns risk" width="95%">
+</p>
+
+- **My portfolio:** paste holdings (shares or dollar values) and pick a target method.
+  - The page produces whole-share orders that never overdraw cash, skip tiny trades, include
+    costs and can keep a cash buffer.
+  - Expected risk and return are shown now, at the target, and after the trades.
+  - The orders download as CSV.
+- **Goal planner:** month-by-month simulation over decades, in today's dollars:
+  - contributions, then inflation-indexed withdrawals;
+  - a glide path from the growth portfolio toward T-bills;
+  - an explicit expected-return assumption, since a few years of history are a poor
+    forecast.
+
+  It reports the probability of reaching a goal and of running out, the withdrawal that is
+  safe at a chosen confidence, and sequence-of-returns risk (success rate by the first
+  retirement years' return).
+- **Saved setups:** named universes (tickers, dates, estimators, constraints) are saved in the
+  browser and loadable from the universe dialog.
 
 ## Report
 
@@ -210,6 +255,13 @@ pins it to a concrete number:
 - **No look-ahead in signals:** every signal is tested to give identical values on data truncated
   at any day. An always-on filter reproduces the rebalanced base exactly, and an all-off filter
   earns exactly cash.
+- **VaR forecasts and every signal are tested by truncation:** values up to day t are unchanged
+  when later data are removed.
+- **Closed-form checks:**
+  - The planner with zero volatility reproduces the annuity formula exactly.
+  - Newey–West errors reduce to the White errors with zero lags.
+  - Component VaR and ES sum exactly to the totals.
+  - PBO is high for pure noise and near zero for a real edge.
 - **Ledoit–Wolf shrinkage** is implemented directly and matches scikit-learn to 1e-19.
 - **Monte Carlo errors** are reported for every simulated statistic (batch means), and the
   simulated mean matches the model's analytic mean within that error.
@@ -274,8 +326,11 @@ API documentation is at http://localhost:8030/docs while the API runs.
   walk-forward page is the out-of-sample check.
 - Crisis replays apply today's static weights to past returns. They are diagnostics, not
   forecasts.
-- The attribution factors are transparent ETF proxies (e.g. IWD − IWF for value), not the
-  official Fama–French factors.
+- Fama–French factors are US-equity factors and are published with about a month's lag. Factor
+  betas of bonds or non-US assets mostly measure correlation, not exposure to the same
+  premium.
+- The goal planner's answers depend on its return assumption far more than on any other
+  input; vary it before trusting a probability.
 
 ## License
 

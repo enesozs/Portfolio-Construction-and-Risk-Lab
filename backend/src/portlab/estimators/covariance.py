@@ -48,6 +48,49 @@ def ledoit_wolf_covariance(returns: pd.DataFrame, periods_per_year: int = 252) -
     return pd.DataFrame(shrunk * periods_per_year, index=clean.columns, columns=clean.columns)
 
 
+def marchenko_pastur_denoise(returns: pd.DataFrame) -> tuple[np.ndarray, int]:
+    """Denoised correlation by the constant-residual-eigenvalue method (López de Prado, 2020).
+
+    For a correlation matrix of N assets estimated from T observations of pure noise, the
+    eigenvalues spread over [σ²(1 − √q)², σ²(1 + √q)²] with q = N/T (Marchenko–Pastur). An
+    eigenvalue below the upper edge λ₊ cannot be told apart from noise. Those eigenvalues are
+    replaced by their average (keeping the trace), the matrix is rebuilt and rescaled to a unit
+    diagonal. The residual variance σ² is the mean of the noise eigenvalues, iterated to a
+    fixed point. Returns the denoised correlation and the number of eigenvalues kept as signal.
+    """
+    x = returns.dropna(how="any").to_numpy(dtype=float)
+    n_obs, n = x.shape
+    corr = np.corrcoef(x, rowvar=False)
+    values, vectors = np.linalg.eigh(corr)
+    q = n / n_obs
+    sigma2 = 1.0
+    for _ in range(50):
+        edge = sigma2 * (1 + np.sqrt(q)) ** 2
+        noise = values < edge
+        if noise.all() or not noise.any():
+            break
+        updated = float(values[noise].mean())
+        if abs(updated - sigma2) < 1e-10:
+            break
+        sigma2 = updated
+    noise = values < sigma2 * (1 + np.sqrt(q)) ** 2
+    signal = int((~noise).sum())
+    if noise.sum() > 1:
+        values = values.copy()
+        values[noise] = values[noise].mean()
+    rebuilt = vectors @ np.diag(values) @ vectors.T
+    d = np.sqrt(np.diag(rebuilt))
+    return rebuilt / np.outer(d, d), signal
+
+
+def denoised_covariance(returns: pd.DataFrame, periods_per_year: int = 252) -> pd.DataFrame:
+    clean = returns.dropna(how="any")
+    corr, _ = marchenko_pastur_denoise(clean)
+    vols = clean.std(ddof=1).to_numpy(dtype=float) * np.sqrt(periods_per_year)
+    cov = corr * np.outer(vols, vols)
+    return pd.DataFrame(cov, index=clean.columns, columns=clean.columns)
+
+
 def estimate_covariance(
     returns: pd.DataFrame, method: str = "sample", periods_per_year: int = 252
 ) -> pd.DataFrame:
@@ -58,4 +101,6 @@ def estimate_covariance(
         return ewma_covariance(returns, periods_per_year=periods_per_year)
     if method in {"ledoit_wolf", "shrinkage"}:
         return ledoit_wolf_covariance(returns, periods_per_year)
+    if method == "denoised":
+        return denoised_covariance(returns, periods_per_year)
     raise ValueError(f"unknown covariance estimator: {method}")

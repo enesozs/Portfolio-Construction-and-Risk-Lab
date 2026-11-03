@@ -55,6 +55,7 @@ export const AREAS: AreaDef[] = [
       page('', 'Decomposition', () => import('@/features/risk/decomposition-page')),
       page('stress', 'Stress & scenarios', () => import('@/features/risk/stress-page')),
       page('crises', 'Crisis replay', () => import('@/features/risk/crises-page')),
+      page('var', 'VaR backtest', () => import('@/features/risk/var-page')),
       page('simulation', 'Monte Carlo', () => import('@/features/risk/simulation-page')),
     ],
   },
@@ -65,6 +66,7 @@ export const AREAS: AreaDef[] = [
       page('', 'Walk-forward', () => import('@/features/validate/walk-forward-page')),
       page('rebalancing', 'Rebalancing', () => import('@/features/validate/rebalancing-page')),
       page('bootstrap', 'Stability', () => import('@/features/validate/bootstrap-page')),
+      page('compare', 'Compare methods', () => import('@/features/validate/compare-page')),
     ],
   },
   {
@@ -72,6 +74,14 @@ export const AREAS: AreaDef[] = [
     label: 'Attribution',
     pages: [
       page('', 'Benchmark & factors', () => import('@/features/attribution/attribution-page')),
+    ],
+  },
+  {
+    path: 'plan',
+    label: 'Plan',
+    pages: [
+      page('', 'My portfolio', () => import('@/features/plan/holdings-page')),
+      page('goals', 'Goal planner', () => import('@/features/plan/planner-page')),
     ],
   },
   {

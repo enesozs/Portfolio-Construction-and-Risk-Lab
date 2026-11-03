@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch'
 import type { UniverseIn } from '@/lib/api'
 import { longDate, pct } from '@/lib/format'
 import { ConstraintsEditor } from './constraints-editor'
+import { SavedUniverses } from './saved-universes'
 import {
   constraintsSummary,
   DEFAULT_CONSTRAINTS,
@@ -42,6 +43,7 @@ const COV_METHODS = [
   { value: 'ledoit_wolf', label: 'Ledoit–Wolf shrinkage' },
   { value: 'sample', label: 'Sample' },
   { value: 'ewma', label: 'EWMA (recent-weighted)' },
+  { value: 'denoised', label: 'Denoised (Marchenko–Pastur)' },
 ] as const
 
 function parseTickers(text: string): string[] {
@@ -177,6 +179,13 @@ function UniverseEditor() {
                 ))}
               </div>
             </div>
+            <SavedUniverses
+              current={{ ...draft, tickers: parseTickers(tickerText) }}
+              onLoad={(u) => {
+                setDraft(u)
+                setTickerText(u.tickers.join(', '))
+              }}
+            />
             <div className="flex flex-col gap-2">
               <Label htmlFor={ids.tickers}>Tickers</Label>
               <Input

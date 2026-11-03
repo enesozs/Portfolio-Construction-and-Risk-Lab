@@ -10,6 +10,17 @@ portfolio weights, so correlations, joint crashes and rebalancing all matter:
 * bootstrap: blocks of consecutive historical days, resampled with replacement. No
   distributional assumption, and volatility clustering survives within each block; but the
   future can only replay the past, and the mean is the historical one.
+* t_copula: each asset keeps its own historical return distribution (empirical marginals,
+  shifted to the model mean), joined by a Student-t copula whose correlation comes from the
+  normal scores of history. Separates "how each asset behaves" from "how they crash
+  together": tail dependence comes from the copula's degrees of freedom.
+* regime: a two-state Markov chain (calm / stressed). Historical days are split into two
+  groups by the equal-weight portfolio's trailing 21-day volatility, with the threshold set
+  by two-cluster k-means on log volatility (the data, not a fixed quantile, decide how much
+  of the history was stressed); each
+  regime gets its own mean and covariance, and the switching probabilities are the observed
+  day-to-day transition frequencies. Simulation starts in today's regime. Crises then arrive
+  as persistent spells of high volatility and correlation, not as isolated bad days.
 
 Weights either drift (`rebalance_every=0`, buy and hold) or are reset every
 `rebalance_every` days. Headline numbers come with a Monte Carlo standard error from
@@ -24,7 +35,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-MODELS = ("normal", "student_t", "bootstrap")
+MODELS = ("normal", "student_t", "bootstrap", "t_copula", "regime")
 BATCHES = 20
 CHUNK = 1_000
 PERCENTILES = (5, 25, 50, 75, 95)
@@ -37,6 +48,20 @@ class Estimate:
 
 
 @dataclass(frozen=True)
+class RegimeModel:
+    """Two-state Markov regime model estimated from history (see module docstring)."""
+
+    mu: np.ndarray
+    """Daily mean per regime, shape (2, assets): 0 = calm, 1 = stressed."""
+    chol: np.ndarray
+    """Cholesky factor of each regime's daily covariance, shape (2, assets, assets)."""
+    transition: np.ndarray
+    """P[i, j] = probability of moving from regime i to regime j the next day."""
+    start: int
+    share_stressed: float
+
+
+@dataclass(frozen=True)
 class SimulationResult:
     fan: dict[int, np.ndarray]
     """Wealth percentile (5, 25, 50, 75, 95) at each day 0..horizon."""
@@ -46,6 +71,56 @@ class SimulationResult:
     max_drawdown: np.ndarray
     """Per path, as a positive fraction."""
     metrics: dict[str, Estimate]
+    regimes: RegimeModel | None = None
+    """The fitted regime model (regime simulations only)."""
+
+
+def _two_means_threshold(x: np.ndarray) -> float:
+    """Split point of 1-D k-means with two clusters (started at the quartiles)."""
+    lo, hi = np.quantile(x, [0.25, 0.75])
+    for _ in range(100):
+        cut = (lo + hi) / 2
+        new_lo, new_hi = x[x <= cut].mean(), x[x > cut].mean()
+        if abs(new_lo - lo) + abs(new_hi - hi) < 1e-12:
+            break
+        lo, hi = new_lo, new_hi
+    return (lo + hi) / 2
+
+
+def fit_regimes(history: np.ndarray, window: int = 21) -> RegimeModel:
+    ew = history.mean(axis=1)
+    vol = pd.Series(ew).rolling(window).std().to_numpy()
+    valid = ~np.isnan(vol) & (vol > 0)
+    log_vol = np.log(vol[valid])
+    labels = (log_vol > _two_means_threshold(log_vol)).astype(int)
+    data = history[valid]
+    mus, chols = [], []
+    for k in (0, 1):
+        part = data[labels == k]
+        if len(part) < data.shape[1] + 2:
+            raise ValueError("too little history to estimate both regimes")
+        mus.append(part.mean(axis=0))
+        cov = np.atleast_2d(np.cov(part, rowvar=False))
+        chols.append(np.linalg.cholesky(cov + 1e-12 * np.eye(cov.shape[0])))
+    counts = np.zeros((2, 2))
+    np.add.at(counts, (labels[:-1], labels[1:]), 1)
+    transition = counts / counts.sum(axis=1, keepdims=True)
+    return RegimeModel(
+        mu=np.array(mus),
+        chol=np.array(chols),
+        transition=transition,
+        start=int(labels[-1]),
+        share_stressed=float(labels.mean()),
+    )
+
+
+def _normal_scores_correlation(history: np.ndarray) -> np.ndarray:
+    """Correlation of the normal scores Φ⁻¹(rank/(n+1)): the copula's own correlation."""
+    from scipy.stats import norm, rankdata
+
+    n = len(history)
+    scores = norm.ppf(rankdata(history, axis=0) / (n + 1))
+    return np.atleast_2d(np.corrcoef(scores, rowvar=False))
 
 
 def _asset_returns(
@@ -59,9 +134,37 @@ def _asset_returns(
     history: np.ndarray,
     student_df: float,
     block_size: int,
+    copula_chol: np.ndarray | None = None,
+    regimes: RegimeModel | None = None,
 ) -> np.ndarray:
     """Simulated simple returns, shape (n paths, horizon, assets)."""
     n_assets = daily_mu.size
+    if model == "t_copula":
+        from scipy.stats import t as student_t
+
+        assert copula_chol is not None
+        z = rng.standard_normal((n, horizon, n_assets)) @ copula_chol.T
+        w = rng.chisquare(student_df, size=(n, horizon, 1)) / student_df
+        u = student_t.cdf(z / np.sqrt(w), student_df)
+        # Empirical marginals, recentred so each asset's mean is the model's.
+        centred = np.sort(history - history.mean(axis=0) + daily_mu, axis=0)
+        idx = np.minimum((u * len(centred)).astype(int), len(centred) - 1)
+        return np.take_along_axis(centred, idx.reshape(-1, n_assets), axis=0).reshape(
+            n, horizon, n_assets
+        )
+    if model == "regime":
+        assert regimes is not None
+        state = np.full(n, regimes.start)
+        out = np.empty((n, horizon, n_assets))
+        stay = np.diag(regimes.transition)
+        for t in range(horizon):
+            z = rng.standard_normal((n, n_assets))
+            for k in (0, 1):
+                m = state == k
+                out[m, t] = regimes.mu[k] + z[m] @ regimes.chol[k].T
+            switch = rng.random(n) > stay[state]
+            state = np.where(switch, 1 - state, state)
+        return np.maximum(out, -0.99)
     if model == "bootstrap":
         blocks = -(-horizon // block_size)
         starts = rng.integers(0, len(history) - block_size + 1, size=(n, blocks))
@@ -116,7 +219,7 @@ def simulate_portfolio(
         raise ValueError(f"model must be one of {', '.join(MODELS)}")
     if horizon_days < 2 or n_paths < 2 * BATCHES:
         raise ValueError(f"need a horizon of 2+ days and at least {2 * BATCHES} paths")
-    if model == "student_t" and student_df <= 2:
+    if model in ("student_t", "t_copula") and student_df <= 2:
         raise ValueError("student_df must exceed 2 (the variance is infinite otherwise)")
     assets = [str(c) for c in history.columns]
     hist = history[assets].dropna(how="any").to_numpy(dtype=float)
@@ -127,6 +230,13 @@ def simulate_portfolio(
     daily_cov = cov.reindex(index=assets, columns=assets).to_numpy(dtype=float) / 252.0
     # A tiny ridge keeps the Cholesky factor defined for (near-)singular covariances.
     chol = np.linalg.cholesky(daily_cov + 1e-12 * np.eye(len(assets)))
+
+    copula_chol = regimes = None
+    if model == "t_copula":
+        corr = _normal_scores_correlation(hist)
+        copula_chol = np.linalg.cholesky(corr + 1e-10 * np.eye(len(assets)))
+    elif model == "regime":
+        regimes = fit_regimes(hist)
 
     rng = np.random.default_rng(seed)
     paths: list[np.ndarray] = []
@@ -142,6 +252,8 @@ def simulate_portfolio(
             history=hist,
             student_df=student_df,
             block_size=block_size,
+            copula_chol=copula_chol,
+            regimes=regimes,
         )
         paths.append(_portfolio_wealth(r, w, rebalance_every))
     wealth = np.vstack(paths)
@@ -175,4 +287,5 @@ def simulate_portfolio(
         terminal=terminal,
         max_drawdown=max_dd,
         metrics=metrics,
+        regimes=regimes,
     )

@@ -93,7 +93,7 @@ class CrisesResponse(BaseModel):
 
 
 class SimulationRequest(PortfolioRequest):
-    model: Literal["normal", "student_t", "bootstrap"] = "student_t"
+    model: Literal["normal", "student_t", "bootstrap", "t_copula", "regime"] = "student_t"
     horizon_days: int = Field(default=252, ge=5, le=2520)
     n_paths: int = Field(default=5_000, ge=200, le=20_000)
     rebalance_every: int = Field(default=0, ge=0, le=252)
@@ -108,6 +108,21 @@ class Estimate(BaseModel):
     stderr: float
 
 
+class RegimeOut(BaseModel):
+    share_stressed: float
+    """Share of historical days labelled stressed."""
+    starts_stressed: bool
+    stay_calm: float
+    stay_stressed: float
+    """Daily probabilities of remaining in each regime."""
+    calm_volatility: float
+    stressed_volatility: float
+    """Annualised volatility of an equal-weight mix within each regime."""
+    calm_correlation: float
+    stressed_correlation: float
+    """Average pairwise correlation within each regime."""
+
+
 class SimulationResponse(BaseModel):
     days: list[int]
     p05: list[float]
@@ -119,3 +134,40 @@ class SimulationResponse(BaseModel):
     terminal: Histogram
     max_drawdown: Histogram
     metrics: dict[str, Estimate]
+    regime: RegimeOut | None = None
+
+
+class VarBacktestRequest(PortfolioRequest):
+    confidence: float = Field(default=0.99, ge=0.9, le=0.999)
+    window: int = Field(default=250, ge=60, le=1000)
+
+
+class VarModelOut(BaseModel):
+    model: str
+    var: TimeSeries
+    """Forecast 1-day VaR (positive loss) for each day."""
+    exception_dates: list[str]
+    rate: float
+    kupiec_p: float
+    independence_p: float
+    conditional_p: float
+    traffic_light: str | None
+    last_250_exceptions: int
+
+
+class ComponentOut(BaseModel):
+    asset: str
+    weight: float
+    component_var: float
+    component_es: float
+
+
+class VarBacktestResponse(BaseModel):
+    confidence: float
+    expected_rate: float
+    returns: TimeSeries
+    """Daily portfolio returns over the backtest period."""
+    models: list[VarModelOut]
+    var: float
+    es: float
+    components: list[ComponentOut]

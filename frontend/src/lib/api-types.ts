@@ -276,6 +276,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/risk/var-backtest': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Var Backtest */
+    post: operations['var_backtest_api_risk_var_backtest_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/validation/walk-forward': {
     parameters: {
       query?: never
@@ -327,6 +344,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/validation/compare': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Compare */
+    post: operations['compare_api_validation_compare_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/dynamic/signals': {
     parameters: {
       query?: never
@@ -355,6 +389,40 @@ export interface paths {
     put?: never
     /** Backtest */
     post: operations['backtest_api_dynamic_backtest_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/portfolio/holdings': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Holdings */
+    post: operations['holdings_api_portfolio_holdings_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/planner': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Planner */
+    post: operations['planner_api_planner_post']
     delete?: never
     options?: never
     head?: never
@@ -445,6 +513,19 @@ export interface components {
       respects_constraints: boolean
       /** Idea */
       idea: string
+    }
+    /** AssetExposure */
+    AssetExposure: {
+      /** Ticker */
+      ticker: string
+      /** Betas */
+      betas: {
+        [key: string]: number
+      }
+      /** Alpha */
+      alpha: number
+      /** R Squared */
+      r_squared: number
     }
     /** AssetStats */
     AssetStats: {
@@ -631,6 +712,25 @@ export interface components {
       /** Max */
       max: number
     }
+    /** CompareRequest */
+    CompareRequest: {
+      universe: components['schemas']['UniverseIn']
+      /**
+       * Lookback
+       * @default 252
+       */
+      lookback: number
+      /**
+       * Rebalance Every
+       * @default 21
+       */
+      rebalance_every: number
+      /**
+       * Cost Bps
+       * @default 5
+       */
+      cost_bps: number
+    }
     /**
      * CompareResponse
      * @description Several named allocations with their headline ex-ante numbers.
@@ -650,6 +750,17 @@ export interface components {
       sharpe: (number | null)[]
       /** Turnover */
       turnover?: (number | null)[]
+    }
+    /** ComponentOut */
+    ComponentOut: {
+      /** Asset */
+      asset: string
+      /** Weight */
+      weight: number
+      /** Component Var */
+      component_var: number
+      /** Component Es */
+      component_es: number
     }
     /**
      * ConstraintsIn
@@ -934,6 +1045,19 @@ export interface components {
       /** Stderr */
       stderr: number
     }
+    /** EstimatorResult */
+    EstimatorResult: {
+      /** Estimator */
+      estimator: string
+      /** Realized Volatility */
+      realized_volatility: number
+      /** Predicted Volatility */
+      predicted_volatility: number
+      /** Ratio */
+      ratio: number
+      /** Sharpe */
+      sharpe: number | null
+    }
     /** EstimatorRow */
     EstimatorRow: {
       /** Return Method */
@@ -987,22 +1111,51 @@ export interface components {
         [key: string]: number
       }
     }
+    /** FactorOut */
+    FactorOut: {
+      /** Key */
+      key: string
+      /** Label */
+      label: string
+      /** Beta */
+      beta: number
+      /** Stderr */
+      stderr: number
+      /** T Stat */
+      t_stat: number
+      /** P Value */
+      p_value: number
+      /** Risk Share */
+      risk_share: number
+    }
     /** FactorResponse */
     FactorResponse: {
-      /** Exposures */
-      exposures: {
-        [key: string]: number
-      }
+      /** Factors */
+      factors: components['schemas']['FactorOut'][]
       /** Alpha */
       alpha: number
+      /** Alpha T */
+      alpha_t: number | null
       /** R Squared */
       r_squared: number
       /** Observations */
       observations: number
-      /** Proxies */
-      proxies: {
-        [key: string]: string
+      /** Lags */
+      lags: number
+      /** Idiosyncratic Share */
+      idiosyncratic_share: number
+      /** Start */
+      start: string
+      /** End */
+      end: string
+      /** Stale */
+      stale: boolean
+      /** Rolling */
+      rolling: {
+        [key: string]: components['schemas']['TimeSeries']
       }
+      /** Assets */
+      assets: components['schemas']['AssetExposure'][]
     }
     /** FrontierPoint */
     FrontierPoint: {
@@ -1023,6 +1176,80 @@ export interface components {
       /** Counts */
       counts: number[]
     }
+    /** HoldingsRequest */
+    HoldingsRequest: {
+      universe: components['schemas']['UniverseIn']
+      /** Holdings */
+      holdings: string
+      /**
+       * Cash
+       * @default 0
+       */
+      cash: number
+      /**
+       * Target
+       * @default max_sharpe
+       * @enum {string}
+       */
+      target:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
+      /**
+       * Fractional
+       * @default false
+       */
+      fractional: boolean
+      /**
+       * Min Trade
+       * @default 0
+       */
+      min_trade: number
+      /**
+       * Cost Bps
+       * @default 5
+       */
+      cost_bps: number
+      /**
+       * Cash Buffer
+       * @default 0
+       */
+      cash_buffer: number
+    }
+    /** HoldingsResponse */
+    HoldingsResponse: {
+      /** Problems */
+      problems: string[]
+      /** Outside Universe */
+      outside_universe: string[]
+      /** Price Date */
+      price_date: string
+      /** Total */
+      total: number
+      /** Cash Before */
+      cash_before: number
+      /** Cash After */
+      cash_after: number
+      /** Orders */
+      orders: components['schemas']['OrderOut'][]
+      /** Turnover */
+      turnover: number
+      /** Total Cost */
+      total_cost: number
+      /** Tracking Gap */
+      tracking_gap: number
+      current: components['schemas']['RiskSnapshot'] | null
+      target: components['schemas']['RiskSnapshot']
+      after: components['schemas']['RiskSnapshot']
+    }
     /** MetaResponse */
     MetaResponse: {
       /** Allocators */
@@ -1033,6 +1260,78 @@ export interface components {
       }
       /** Snapshot Tickers */
       snapshot_tickers: string[]
+    }
+    /** MethodComparisonResponse */
+    MethodComparisonResponse: {
+      /** Start */
+      start: string
+      /** End */
+      end: string
+      /** Methods */
+      methods: components['schemas']['MethodResult'][]
+      /** Errors */
+      errors: {
+        [key: string]: string
+      }
+      overfitting: components['schemas']['OverfittingOut'] | null
+      /** Estimators */
+      estimators: components['schemas']['EstimatorResult'][]
+    }
+    /** MethodResult */
+    MethodResult: {
+      /** Key */
+      key: string
+      /** Label */
+      label: string
+      performance: components['schemas']['Performance']
+      wealth: components['schemas']['TimeSeries']
+      /** Average Turnover */
+      average_turnover: number
+      /** Total Cost */
+      total_cost: number
+      /** Sharpe Vs Equal Z */
+      sharpe_vs_equal_z: number | null
+      /** Sharpe Vs Equal P */
+      sharpe_vs_equal_p: number | null
+    }
+    /** OrderOut */
+    OrderOut: {
+      /** Ticker */
+      ticker: string
+      /** Price */
+      price: number
+      /** Current Shares */
+      current_shares: number
+      /** Target Shares */
+      target_shares: number
+      /** Trade Shares */
+      trade_shares: number
+      /** Trade Value */
+      trade_value: number
+      /** Cost */
+      cost: number
+      /** Current Weight */
+      current_weight: number
+      /** Target Weight */
+      target_weight: number
+      /** Weight After */
+      weight_after: number
+    }
+    /** OverfittingOut */
+    OverfittingOut: {
+      /** Pbo */
+      pbo: number
+      /** Splits */
+      splits: number
+      logits: components['schemas']['Histogram']
+      /** In Sample Sharpe */
+      in_sample_sharpe: number[]
+      /** Out Of Sample Sharpe */
+      out_of_sample_sharpe: number[]
+      /** Winners */
+      winners: {
+        [key: string]: number
+      }
     }
     /** OverviewResponse */
     OverviewResponse: {
@@ -1092,6 +1391,131 @@ export interface components {
       max_drawdown: number
       /** Calmar */
       calmar: number | null
+    }
+    /** PlanRequest */
+    PlanRequest: {
+      universe: components['schemas']['UniverseIn']
+      /**
+       * Portfolio
+       * @default risk_parity
+       * @enum {string}
+       */
+      portfolio:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
+      /**
+       * Initial
+       * @default 100000
+       */
+      initial: number
+      /**
+       * Monthly Contribution
+       * @default 1000
+       */
+      monthly_contribution: number
+      /**
+       * Years
+       * @default 30
+       */
+      years: number
+      /**
+       * Retire Year
+       * @default 20
+       */
+      retire_year: number
+      /**
+       * Annual Withdrawal
+       * @default 40000
+       */
+      annual_withdrawal: number
+      /**
+       * Inflation
+       * @default 0.025
+       */
+      inflation: number
+      /** Goal */
+      goal?: number | null
+      /** Goal Year */
+      goal_year?: number | null
+      /**
+       * Glide Start
+       * @default 1
+       */
+      glide_start: number
+      /**
+       * Glide End
+       * @default 0.6
+       */
+      glide_end: number
+      /**
+       * Model
+       * @default bootstrap
+       * @enum {string}
+       */
+      model: 'normal' | 'student_t' | 'bootstrap'
+      /**
+       * Expected Return
+       * @default 0.06
+       */
+      expected_return: number | null
+      /**
+       * N Paths
+       * @default 3000
+       */
+      n_paths: number
+      /**
+       * Confidence
+       * @default 0.9
+       */
+      confidence: number
+    }
+    /** PlanResponse */
+    PlanResponse: {
+      /** Years */
+      years: number[]
+      /** P05 */
+      p05: number[]
+      /** P25 */
+      p25: number[]
+      /** P50 */
+      p50: number[]
+      /** P75 */
+      p75: number[]
+      /** P95 */
+      p95: number[]
+      /** Sample Paths */
+      sample_paths: number[][]
+      /** Ruin By Year */
+      ruin_by_year: number[]
+      /** Probability Goal */
+      probability_goal: number | null
+      /** Probability Ruin */
+      probability_ruin: number
+      /** Median Terminal */
+      median_terminal: number
+      /** Safe Withdrawal Rate */
+      safe_withdrawal_rate: number | null
+      /** Safe Withdrawal */
+      safe_withdrawal: number | null
+      /** Sequence */
+      sequence: components['schemas']['SequenceBucket'][]
+      /** Weights */
+      weights: {
+        [key: string]: number
+      }
+      /** Cash Rate */
+      cash_rate: number
+      /** Sample Expected Return */
+      sample_expected_return: number
     }
     /** PolicyResult */
     PolicyResult: {
@@ -1238,6 +1662,25 @@ export interface components {
       /** Policies */
       policies: components['schemas']['PolicyResult'][]
     }
+    /** RegimeOut */
+    RegimeOut: {
+      /** Share Stressed */
+      share_stressed: number
+      /** Starts Stressed */
+      starts_stressed: boolean
+      /** Stay Calm */
+      stay_calm: number
+      /** Stay Stressed */
+      stay_stressed: number
+      /** Calm Volatility */
+      calm_volatility: number
+      /** Stressed Volatility */
+      stressed_volatility: number
+      /** Calm Correlation */
+      calm_correlation: number
+      /** Stressed Correlation */
+      stressed_correlation: number
+    }
     /** ReportResponse */
     ReportResponse: {
       /** Markdown */
@@ -1267,6 +1710,15 @@ export interface components {
       }
       /** Volatility */
       volatility: number
+    }
+    /** RiskSnapshot */
+    RiskSnapshot: {
+      /** Expected Return */
+      expected_return: number
+      /** Volatility */
+      volatility: number
+      /** Sharpe */
+      sharpe: number | null
     }
     /** RobustRequest */
     RobustRequest: {
@@ -1316,6 +1768,17 @@ export interface components {
         [key: string]: number
       }
     }
+    /** SequenceBucket */
+    SequenceBucket: {
+      /** Quintile */
+      quintile: number
+      /** Early Return */
+      early_return: number | null
+      /** Success */
+      success: number | null
+      /** Median Terminal */
+      median_terminal: number | null
+    }
     /** SignalOut */
     SignalOut: {
       /** Key */
@@ -1362,7 +1825,7 @@ export interface components {
        * @default student_t
        * @enum {string}
        */
-      model: 'normal' | 'student_t' | 'bootstrap'
+      model: 'normal' | 'student_t' | 'bootstrap' | 't_copula' | 'regime'
       /**
        * Horizon Days
        * @default 252
@@ -1416,6 +1879,7 @@ export interface components {
       metrics: {
         [key: string]: components['schemas']['Estimate']
       }
+      regime?: components['schemas']['RegimeOut'] | null
     }
     /** StrategyStats */
     StrategyStats: {
@@ -1598,7 +2062,7 @@ export interface components {
        * @default ledoit_wolf
        * @enum {string}
        */
-      cov_method: 'sample' | 'ledoit_wolf' | 'ewma'
+      cov_method: 'sample' | 'ledoit_wolf' | 'ewma' | 'denoised'
       /** Max Weight */
       max_weight?: number | null
       /** Risk Free */
@@ -1650,6 +2114,73 @@ export interface components {
       input?: unknown
       /** Context */
       ctx?: Record<string, never>
+    }
+    /** VarBacktestRequest */
+    VarBacktestRequest: {
+      universe: components['schemas']['UniverseIn']
+      /**
+       * Portfolio
+       * @default max_sharpe
+       * @enum {string}
+       */
+      portfolio:
+        | 'equal_weight'
+        | 'min_variance'
+        | 'max_sharpe'
+        | 'risk_parity'
+        | 'max_diversification'
+        | 'min_cvar'
+        | 'kelly'
+        | 'resampled'
+        | 'hrp'
+        | 'herc'
+        | 'nco'
+      /**
+       * Confidence
+       * @default 0.99
+       */
+      confidence: number
+      /**
+       * Window
+       * @default 250
+       */
+      window: number
+    }
+    /** VarBacktestResponse */
+    VarBacktestResponse: {
+      /** Confidence */
+      confidence: number
+      /** Expected Rate */
+      expected_rate: number
+      returns: components['schemas']['TimeSeries']
+      /** Models */
+      models: components['schemas']['VarModelOut'][]
+      /** Var */
+      var: number
+      /** Es */
+      es: number
+      /** Components */
+      components: components['schemas']['ComponentOut'][]
+    }
+    /** VarModelOut */
+    VarModelOut: {
+      /** Model */
+      model: string
+      var: components['schemas']['TimeSeries']
+      /** Exception Dates */
+      exception_dates: string[]
+      /** Rate */
+      rate: number
+      /** Kupiec P */
+      kupiec_p: number
+      /** Independence P */
+      independence_p: number
+      /** Conditional P */
+      conditional_p: number
+      /** Traffic Light */
+      traffic_light: string | null
+      /** Last 250 Exceptions */
+      last_250_exceptions: number
     }
     /** View */
     View: {
@@ -2301,6 +2832,39 @@ export interface operations {
       }
     }
   }
+  var_backtest_api_risk_var_backtest_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['VarBacktestRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VarBacktestResponse']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   walk_forward_api_validation_walk_forward_post: {
     parameters: {
       query?: never
@@ -2400,6 +2964,39 @@ export interface operations {
       }
     }
   }
+  compare_api_validation_compare_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CompareRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['MethodComparisonResponse']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   signals_api_dynamic_signals_get: {
     parameters: {
       query?: never
@@ -2440,6 +3037,72 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['DynamicResponse']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  holdings_api_portfolio_holdings_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['HoldingsRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HoldingsResponse']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  planner_api_planner_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PlanRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PlanResponse']
         }
       }
       /** @description Validation Error */

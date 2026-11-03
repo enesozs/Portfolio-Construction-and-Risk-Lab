@@ -56,7 +56,7 @@ function EstimatorTable({ data, stale }: { data: EstimatorsResponse; stale: bool
     <Card>
       <CardHeader>
         <CardTitle className="text-base" render={<h2 />}>
-          Nine estimate sets, one allocator
+          Twelve estimate sets, one allocator
         </CardTitle>
         <CardDescription>
           Each row re-runs the same allocator with a different return and covariance estimator.
@@ -144,9 +144,9 @@ export default function EstimatorsPage() {
   return (
     <>
       <PageHeader title="Estimator sensitivity">
-        An optimiser is only as good as the numbers it is fed. Here one allocator is run nine times,
-        once per combination of return and covariance estimator, on the same data. When the weights
-        swing, it is the estimates, not the optimiser, that are driving the answer.
+        An optimiser is only as good as the numbers it is fed. Here one allocator is run twelve
+        times, once per combination of return and covariance estimator, on the same data. When the
+        weights swing, it is the estimates, not the optimiser, that are driving the answer.
       </PageHeader>
       <div className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
         <aside>
@@ -215,7 +215,7 @@ export default function EstimatorsPage() {
                       ? `${fixed(range(sharpes)[0], 2)} – ${fixed(range(sharpes)[1], 2)}`
                       : '—'
                   }
-                  hint="lowest to highest across the nine"
+                  hint="lowest to highest across the twelve"
                 />
                 <Stat
                   label="Expected volatility range"
@@ -259,7 +259,7 @@ export default function EstimatorsPage() {
               />
               <WeightBars
                 title="How far each asset's weight moves"
-                description="Highest minus lowest weight of each asset across the nine combinations. A bar of 30% means the asset's weight depends on the estimator by up to 30 percentage points."
+                description="Highest minus lowest weight of each asset across the twelve combinations. A bar of 30% means the asset's weight depends on the estimator by up to 30 percentage points."
                 guide={
                   <p>
                     Tall bars mark the assets where the estimators disagree. They are usually the

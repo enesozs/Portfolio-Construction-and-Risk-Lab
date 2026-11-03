@@ -34,6 +34,10 @@ export type BenchmarkResponse = Schemas['BenchmarkResponse']
 export type FactorResponse = Schemas['FactorResponse']
 export type ReportResponse = Schemas['ReportResponse']
 export type MetaResponse = Schemas['MetaResponse']
+export type VarBacktestResponse = Schemas['VarBacktestResponse']
+export type CompareMethodsResponse = Schemas['MethodComparisonResponse']
+export type HoldingsResponse = Schemas['HoldingsResponse']
+export type PlanResponse = Schemas['PlanResponse']
 export type SignalsResponse = Schemas['SignalsResponse']
 export type SignalOut = Schemas['SignalOut']
 export type DynamicRequest = Schemas['DynamicRequest']
@@ -111,6 +115,12 @@ export const api = {
   benchmark: endpoint<Schemas['BenchmarkRequest'], BenchmarkResponse>('/attribution/benchmark'),
   factors: endpoint<Schemas['PortfolioRequest'], FactorResponse>('/attribution/factors'),
   report: endpoint<Schemas['PortfolioRequest'], ReportResponse>('/report'),
+  varBacktest: endpoint<Schemas['VarBacktestRequest'], VarBacktestResponse>('/risk/var-backtest'),
+  compareMethods: endpoint<Schemas['CompareRequest'], CompareMethodsResponse>(
+    '/validation/compare',
+  ),
+  holdings: endpoint<Schemas['HoldingsRequest'], HoldingsResponse>('/portfolio/holdings'),
+  planner: endpoint<Schemas['PlanRequest'], PlanResponse>('/planner'),
   signals: (signal?: AbortSignal) =>
     request<SignalsResponse>('/dynamic/signals', undefined, signal),
   dynamic: endpoint<DynamicRequest, DynamicResponse>('/dynamic/backtest'),

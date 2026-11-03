@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ChartGuide } from '@/components/chart-guide'
 import { ChartCard, LegendKey } from '@/components/charts/chart-card'
 import { type ChartOption, EChart } from '@/components/charts/echart'
 import { HistogramChart } from '@/components/charts/simple-charts'
@@ -18,13 +19,16 @@ import { PortfolioSelect } from '@/components/portfolio-select'
 import { QueryError } from '@/components/query-error'
 import { Segmented } from '@/components/segmented'
 import { Stat, StatGrid } from '@/components/stat-grid'
-import { Card } from '@/components/ui/card'
+import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { useLab } from '@/features/universe/universe-context'
 import { api, type PortfolioKey, type SimulationResponse } from '@/lib/api'
 import { fixed, integer, pct, spct } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
-type Model = 'normal' | 'student_t' | 'bootstrap'
+type RegimeOut = NonNullable<SimulationResponse['regime']>
+
+type Model = 'normal' | 'student_t' | 'bootstrap' | 't_copula' | 'regime'
 
 const MODELS: { value: Model; label: string; idea: string }[] = [
   {
@@ -38,11 +42,106 @@ const MODELS: { value: Model; label: string; idea: string }[] = [
     idea: 'Joint Student-t: fat tails that hit all assets on the same days, as in real crashes.',
   },
   {
+    value: 't_copula',
+    label: 't-copula',
+    idea: 'Each asset keeps its own historical return distribution; a Student-t copula decides how they move together, so crashes can be joint even when each asset’s tails differ.',
+  },
+  {
     value: 'bootstrap',
     label: 'Bootstrap',
     idea: 'Block bootstrap: resampled runs of actual history, keeping its tails and clustering.',
   },
+  {
+    value: 'regime',
+    label: 'Regimes',
+    idea: 'Calm and stressed regimes, each with its own means and covariance, with Markov switching between them: crises arrive as lasting spells of high volatility and correlation.',
+  },
 ]
+
+/** Uses the degrees-of-freedom control. */
+const usesDf = (m: Model) => m === 'student_t' || m === 't_copula'
+
+/** Average length of a spell in a regime that persists with daily probability p. */
+const spell = (p: number) => (p < 1 ? 1 / (1 - p) : Number.POSITIVE_INFINITY)
+
+function RegimeCard({ regime, stale }: { regime: RegimeOut; stale: boolean }) {
+  const days = (p: number) => {
+    const d = spell(p)
+    return Number.isFinite(d) ? `about ${integer(d)} trading days per spell` : 'never leaves'
+  }
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base" render={<h2 />}>
+          The two regimes fitted to history
+        </CardTitle>
+        <CardDescription>
+          Days are split by the equal-weight portfolio’s trailing 21-day volatility; the split point
+          is chosen by the data. Each regime gets its own means and covariance, and the switching
+          odds are the observed day-to-day frequencies.
+        </CardDescription>
+        <ChartGuide noun="card">
+          <p>
+            The stay probabilities say how sticky each regime is. A regime kept with probability p
+            each day lasts 1/(1 − p) days on average, so 0.98 means spells of about 50 days.
+            Stickiness is what turns bad days into drawdowns: the simulation can stay stressed for
+            weeks, as in 2008 or 2020.
+          </p>
+          <p>
+            Compare the calm and stressed tiles for volatility and correlation. In the stressed
+            regime both are higher, so diversification shrinks exactly when it is needed. Volatility
+            is for an equal-weight portfolio, annualised; correlation is the average over asset
+            pairs.
+          </p>
+        </ChartGuide>
+      </CardHeader>
+      <CardPanel className={cn('pt-0 transition-opacity', stale && 'opacity-60')}>
+        <StatGrid className="grid-cols-2 md:grid-cols-4">
+          <Stat
+            label="History in the stressed regime"
+            value={pct(regime.share_stressed, 0)}
+            hint="share of days"
+          />
+          <Stat
+            label="Simulation starts"
+            value={regime.starts_stressed ? 'Stressed' : 'Calm'}
+            hint="today’s regime"
+          />
+          <Stat
+            label="Daily chance calm stays calm"
+            value={pct(regime.stay_calm, 1)}
+            hint={days(regime.stay_calm)}
+          />
+          <Stat
+            label="Daily chance stressed stays stressed"
+            value={pct(regime.stay_stressed, 1)}
+            hint={days(regime.stay_stressed)}
+          />
+          <Stat
+            label="Volatility, calm"
+            value={pct(regime.calm_volatility, 1)}
+            hint="equal weight, annualised"
+          />
+          <Stat
+            label="Volatility, stressed"
+            value={pct(regime.stressed_volatility, 1)}
+            hint="equal weight, annualised"
+          />
+          <Stat
+            label="Average correlation, calm"
+            value={fixed(regime.calm_correlation, 2)}
+            hint="across asset pairs"
+          />
+          <Stat
+            label="Average correlation, stressed"
+            value={fixed(regime.stressed_correlation, 2)}
+            hint="across asset pairs"
+          />
+        </StatGrid>
+      </CardPanel>
+    </Card>
+  )
+}
 
 const HORIZONS = [
   { value: '63', label: '3m' },
@@ -263,6 +362,7 @@ export default function SimulationPage() {
               <Segmented
                 label="Return model"
                 size="sm"
+                className="w-full flex-wrap"
                 value={model}
                 onChange={setModel}
                 options={MODELS.map((x) => ({ value: x.value, label: x.label }))}
@@ -270,7 +370,7 @@ export default function SimulationPage() {
               <p className="-mt-2 text-muted-foreground text-xs">
                 {MODELS.find((x) => x.value === model)?.idea}
               </p>
-              {model === 'student_t' && (
+              {usesDf(model) && (
                 <ParamControl
                   label="Degrees of freedom"
                   value={df}
@@ -285,6 +385,12 @@ export default function SimulationPage() {
                 <p className="-mt-2 text-muted-foreground text-xs">
                   Lower means fatter tails; around 30 it is close to normal. Volatility is kept the
                   same either way.
+                </p>
+              )}
+              {model === 't_copula' && (
+                <p className="-mt-2 text-muted-foreground text-xs">
+                  Here it sets only how assets crash together: lower means extreme days are more
+                  often shared. Each asset’s own tails come from its history either way.
                 </p>
               )}
               {model === 'bootstrap' && (
@@ -404,6 +510,7 @@ export default function SimulationPage() {
                   estimated returns and covariances, which no number of paths removes.
                 </p>
               </div>
+              {data.regime && <RegimeCard regime={data.regime} stale={query.stale} />}
               <FanChart data={data} stale={query.stale} />
               <div className="grid gap-6 xl:grid-cols-2">
                 <HistogramChart

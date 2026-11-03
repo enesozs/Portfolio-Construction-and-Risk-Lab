@@ -19,6 +19,7 @@ an integer solver, `max_holdings` uses a standard two-pass heuristic: solve, kee
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
@@ -107,7 +108,10 @@ def _solve(problem: cp.Problem, what: str) -> None:
         if solver not in cp.installed_solvers():
             continue
         try:
-            problem.solve(solver=solver)
+            with warnings.catch_warnings():
+                # Inaccurate solutions are checked by status below; the warning adds nothing.
+                warnings.simplefilter("ignore", UserWarning)
+                problem.solve(solver=solver)
         except SolverError as exc:
             last = exc
             continue

@@ -31,7 +31,7 @@ def compare_covariance_estimators(returns: pd.DataFrame) -> pd.DataFrame:
     sample = estimate_covariance(returns, method="sample")
     sample_arr = sample.to_numpy(dtype=float)
     sample_norm = max(float(np.linalg.norm(sample_arr, ord="fro")), 1e-12)
-    for method in ("sample", "ledoit_wolf", "ewma"):
+    for method in ("sample", "ledoit_wolf", "ewma", "denoised"):
         cov = estimate_covariance(returns, method=method)
         diag = covariance_diagnostics(cov)
         distance = float(

@@ -4,7 +4,14 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from .common import Performance, PortfolioKey, PortfolioRequest, TimeSeries, UniverseRequest
+from .common import (
+    Histogram,
+    Performance,
+    PortfolioKey,
+    PortfolioRequest,
+    TimeSeries,
+    UniverseRequest,
+)
 
 
 class WalkForwardRequest(UniverseRequest):
@@ -83,3 +90,49 @@ class BootstrapResponse(BaseModel):
     least_stable: str
     average_range: float
     """Mean width of the 5–95% weight range across assets."""
+
+
+class CompareRequest(UniverseRequest):
+    lookback: int = Field(default=252, ge=63, le=1260)
+    rebalance_every: int = Field(default=21, ge=5, le=252)
+    cost_bps: float = Field(default=5, ge=0, le=200)
+
+
+class MethodResult(BaseModel):
+    key: str
+    label: str
+    performance: Performance
+    wealth: TimeSeries
+    average_turnover: float
+    total_cost: float
+    sharpe_vs_equal_z: float | None
+    sharpe_vs_equal_p: float | None
+    """Memmel–Jobson–Korkie test of Sharpe(method) = Sharpe(equal weight)."""
+
+
+class OverfittingOut(BaseModel):
+    pbo: float
+    splits: int
+    logits: Histogram
+    in_sample_sharpe: list[float]
+    out_of_sample_sharpe: list[float]
+    winners: dict[str, int]
+
+
+class EstimatorResult(BaseModel):
+    estimator: str
+    realized_volatility: float
+    predicted_volatility: float
+    """Mean ex-ante volatility of the targets."""
+    ratio: float
+    """Realised ÷ predicted: above 1, the estimator understated risk."""
+    sharpe: float | None
+
+
+class MethodComparisonResponse(BaseModel):
+    start: str
+    end: str
+    methods: list[MethodResult]
+    errors: dict[str, str]
+    overfitting: OverfittingOut | None
+    estimators: list[EstimatorResult]

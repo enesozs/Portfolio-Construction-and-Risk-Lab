@@ -11,13 +11,13 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import { FactorSection } from '@/features/attribution/factor-section'
 import { useLab, useUniverse } from '@/features/universe/universe-context'
 import { api, type PortfolioKey, type TimeSeries } from '@/lib/api'
 import { fixed, pct, spct } from '@/lib/format'
 import { portfolioLabel } from '@/lib/portfolios'
 
 const signedPct = (v: number) => spct(v, 1)
-const beta = (v: number) => fixed(v, 2)
 
 /** Log scale only when the lines span a wide range (long samples); otherwise linear reads better. */
 function wideRange(series: TimeSeries[]): boolean {
@@ -181,41 +181,7 @@ export default function AttributionPage() {
             </>
           )}
           <QueryError error={factors.error} title="Could not estimate factor exposures" />
-          {f && (
-            <>
-              <WeightBars
-                title="Factor exposures"
-                description={`Regression betas of the portfolio's daily returns on six style factors (${f.observations.toLocaleString('en-US')} days). Annual alpha ${spct(f.alpha, 1)}; R² ${fixed(f.r_squared, 2)} (share of daily variation the factors explain).`}
-                guide={
-                  <>
-                    <p>
-                      A market beta near 1 means the portfolio moves with the stock market. The
-                      other factors are long-short spreads: a positive Value beta means the
-                      portfolio behaves like cheap stocks minus expensive ones, a negative Size beta
-                      like large companies rather than small.
-                    </p>
-                    <p>
-                      Exposures you did not intend are hidden bets. A low R² means much of the
-                      portfolio's behaviour is not captured by these factors at all, as is typical
-                      for bond-heavy or concentrated portfolios.
-                    </p>
-                  </>
-                }
-                assets={Object.keys(f.exposures)}
-                series={[{ name: 'Beta', weights: f.exposures }]}
-                format={beta}
-                stale={factors.stale}
-              />
-              <p className="-mt-3 text-muted-foreground text-xs">
-                Factors are built from ETF prices:{' '}
-                {Object.entries(f.proxies)
-                  .map(([name, proxy]) => `${name} = ${proxy}`)
-                  .join('; ')}
-                . These are ETF proxies, not the official Fama–French factors, so they include fund
-                fees and the ETFs' own index rules.
-              </p>
-            </>
-          )}
+          {f && <FactorSection data={f} label={label} stale={factors.stale} />}
         </div>
       </div>
     </>

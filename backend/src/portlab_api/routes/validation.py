@@ -8,8 +8,15 @@ from fastapi import APIRouter
 
 from portlab._pandas import column
 from portlab.backtest import BacktestResult, buy_and_hold
+from portlab.optimization.registry import ALLOCATORS
 from portlab.portfolio.metrics import portfolio_returns_series
 from portlab.robustness.bootstrap import bootstrap_weight_stability
+from portlab.validation.compare import (
+    compare_covariance_estimators,
+    compare_methods,
+    memmel_test,
+    probability_of_overfitting,
+)
 from portlab.validation.rebalancing import simulate_rebalancing_policy
 from portlab.validation.walk_forward import walk_forward_portfolio
 
@@ -17,13 +24,18 @@ from ..schemas.validation import (
     BootstrapRequest,
     BootstrapResponse,
     BootstrapRow,
+    CompareRequest,
+    EstimatorResult,
+    MethodComparisonResponse,
+    MethodResult,
+    OverfittingOut,
     PolicyResult,
     RebalancingRequest,
     RebalancingResponse,
     WalkForwardRequest,
     WalkForwardResponse,
 )
-from ..services import context, realised, series_out
+from ..services import context, finite, histogram_out, realised, series_out
 
 router = APIRouter(prefix="/validation", tags=["validation"])
 
@@ -149,4 +161,91 @@ def bootstrap(req: BootstrapRequest) -> BootstrapResponse:
         rows=rows,
         least_stable=max(rows, key=lambda r: r.std).asset,
         average_range=float(np.mean(widths)),
+    )
+
+
+# Resampled max Sharpe re-solves 60 problems per rebalance; it is left out of the comparison.
+COMPARED = [k for k in ALLOCATORS if k != "resampled"]
+
+
+@router.post("/compare")
+def compare(req: CompareRequest) -> MethodComparisonResponse:
+    ctx = context(req.universe)
+    u = ctx.universe
+    results, errors = compare_methods(
+        u.returns,
+        COMPARED,
+        constraints=ctx.constraints,
+        cash_returns=u.cash_returns,
+        lookback=req.lookback,
+        rebalance_every=req.rebalance_every,
+        cost_bps=req.cost_bps,
+        return_method=req.universe.return_method,
+        covariance_method=req.universe.cov_method,
+    )
+    if "equal_weight" not in results:
+        raise ValueError("equal weight could not be run: " + errors.get("equal_weight", ""))
+    returns = pd.DataFrame({k: r.backtest.returns for k, r in results.items()}).dropna()
+    cash = u.cash_returns.reindex(returns.index).fillna(0.0)
+    excess = returns.sub(cash, axis=0)
+    ew = excess["equal_weight"].to_numpy(dtype=float)
+    methods = []
+    for key, result in results.items():
+        bt = result.backtest
+        z, p = (None, None)
+        if key != "equal_weight":
+            z_raw, p_raw = memmel_test(excess[key].to_numpy(dtype=float), ew)
+            z, p = finite(z_raw), finite(p_raw)
+        turnover = column(bt.rebalances, "turnover")
+        methods.append(
+            MethodResult(
+                key=key,
+                label=ALLOCATORS[key].label,
+                performance=realised(bt.returns, ctx),
+                wealth=series_out(bt.wealth),
+                average_turnover=float(turnover.mean()) if len(turnover) else 0.0,
+                total_cost=float(column(bt.rebalances, "cost").sum()) if len(turnover) else 0.0,
+                sharpe_vs_equal_z=z,
+                sharpe_vs_equal_p=p,
+            )
+        )
+    overfitting = None
+    try:
+        o = probability_of_overfitting(excess.rename(columns=lambda k: ALLOCATORS[k].label))
+        overfitting = OverfittingOut(
+            pbo=o.pbo,
+            splits=o.splits,
+            logits=histogram_out(o.logits, bins=20),
+            in_sample_sharpe=o.in_sample_sharpe.tolist(),
+            out_of_sample_sharpe=o.out_of_sample_sharpe.tolist(),
+            winners=o.winners,
+        )
+    except ValueError as exc:
+        errors["overfitting"] = str(exc)
+    estimators = []
+    for cov, r in compare_covariance_estimators(
+        u.returns,
+        constraints=ctx.constraints,
+        cash_returns=u.cash_returns,
+        lookback=req.lookback,
+        rebalance_every=req.rebalance_every,
+    ).items():
+        realized = float(r.backtest.gross_returns.std(ddof=1) * np.sqrt(252))
+        predicted = float(r.predicted_volatility.mean())
+        estimators.append(
+            EstimatorResult(
+                estimator=cov,
+                realized_volatility=realized,
+                predicted_volatility=predicted,
+                ratio=realized / predicted if predicted > 0 else float("nan"),
+                sharpe=realised(r.backtest.returns, ctx).sharpe,
+            )
+        )
+    return MethodComparisonResponse(
+        start=pd.Timestamp(returns.index[0]).strftime("%Y-%m-%d"),
+        end=pd.Timestamp(returns.index[-1]).strftime("%Y-%m-%d"),
+        methods=methods,
+        errors=errors,
+        overfitting=overfitting,
+        estimators=estimators,
     )

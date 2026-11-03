@@ -8,7 +8,11 @@ from fastapi import APIRouter
 
 from portlab.allocation.overlays import volatility_target_allocation
 from portlab.data.prices import load_prices
-from portlab.portfolio.metrics import portfolio_return, portfolio_volatility
+from portlab.portfolio.metrics import (
+    portfolio_return,
+    portfolio_returns_series,
+    portfolio_volatility,
+)
 from portlab.research.diversification import (
     diversification_breakdown,
     marginal_diversification_contribution,
@@ -20,21 +24,27 @@ from portlab.risk.scenarios import (
     replay_historical_period,
 )
 from portlab.risk.stress import stress_test_portfolio, stressed_covariance
-from portlab.simulation.monte_carlo import simulate_portfolio
+from portlab.risk.var_backtest import MODELS, backtest_var, component_risk
+from portlab.simulation.monte_carlo import RegimeModel, simulate_portfolio
 
 from ..schemas.common import PortfolioRequest
 from ..schemas.risk import (
+    ComponentOut,
     ContributionRow,
     CrisesResponse,
     CrisisOut,
     DecompositionResponse,
     Estimate,
+    RegimeOut,
     ScenarioRequest,
     ScenarioResponse,
     SimulationRequest,
     SimulationResponse,
     StressRequest,
     StressResponse,
+    VarBacktestRequest,
+    VarBacktestResponse,
+    VarModelOut,
     VolTargetRequest,
     VolTargetResponse,
 )
@@ -196,4 +206,76 @@ def simulation(req: SimulationRequest) -> SimulationResponse:
         terminal=histogram_out(result.terminal - 1.0),
         max_drawdown=histogram_out(result.max_drawdown),
         metrics={k: Estimate(value=v.value, stderr=v.stderr) for k, v in result.metrics.items()},
+        regime=_regime_out(result.regimes),
+    )
+
+
+def _regime_out(model: RegimeModel | None) -> RegimeOut | None:
+    if model is None:
+        return None
+
+    def describe(k: int) -> tuple[float, float]:
+        cov = model.chol[k] @ model.chol[k].T
+        n = cov.shape[0]
+        w = np.full(n, 1 / n)
+        vols = np.sqrt(np.diag(cov))
+        corr = cov / np.outer(vols, vols)
+        avg_corr = float(corr[~np.eye(n, dtype=bool)].mean()) if n > 1 else 1.0
+        return float(np.sqrt(w @ cov @ w * 252)), avg_corr
+
+    (calm_vol, calm_corr), (stress_vol, stress_corr) = describe(0), describe(1)
+    return RegimeOut(
+        share_stressed=model.share_stressed,
+        starts_stressed=model.start == 1,
+        stay_calm=float(model.transition[0, 0]),
+        stay_stressed=float(model.transition[1, 1]),
+        calm_volatility=calm_vol,
+        stressed_volatility=stress_vol,
+        calm_correlation=calm_corr,
+        stressed_correlation=stress_corr,
+    )
+
+
+@router.post("/var-backtest")
+def var_backtest(req: VarBacktestRequest) -> VarBacktestResponse:
+    ctx = context(req.universe)
+    u = ctx.universe
+    w = ctx.weights(req.portfolio)
+    daily = portfolio_returns_series(u.returns, w)
+    models = []
+    for model in MODELS:
+        bt = backtest_var(daily, model, req.confidence, req.window)
+        models.append(
+            VarModelOut(
+                model=model,
+                var=series_out(bt.var),
+                exception_dates=[
+                    pd.Timestamp(d).strftime("%Y-%m-%d")
+                    for d in bt.exceptions.index[bt.exceptions.to_numpy(dtype=bool)]
+                ],
+                rate=bt.rate,
+                kupiec_p=bt.kupiec.p_value,
+                independence_p=bt.independence.p_value,
+                conditional_p=bt.conditional.p_value,
+                traffic_light=bt.traffic_light,
+                last_250_exceptions=bt.last_250_exceptions,
+            )
+        )
+    tail = component_risk(u.returns, w, u.returns.cov(), req.confidence)
+    return VarBacktestResponse(
+        confidence=req.confidence,
+        expected_rate=1 - req.confidence,
+        returns=series_out(daily.iloc[req.window :]),
+        models=models,
+        var=tail.var,
+        es=tail.es,
+        components=[
+            ComponentOut(
+                asset=a,
+                weight=float(w.at[a]),
+                component_var=float(tail.component_var.at[a]),
+                component_es=float(tail.component_es.at[a]),
+            )
+            for a in u.tickers
+        ],
     )
