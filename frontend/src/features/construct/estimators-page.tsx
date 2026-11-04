@@ -33,10 +33,27 @@ const COV_LABELS: Record<string, string> = {
   sample: 'Sample',
   ledoit_wolf: 'Ledoit–Wolf',
   ewma: 'EWMA',
+  denoised: 'Denoised',
 }
 
 /** Allocators that never look at expected returns: only the covariance choice can move them. */
-const IGNORES_RETURNS: PortfolioKey[] = ['equal_weight', 'min_variance', 'risk_parity', 'hrp']
+const IGNORES_RETURNS: PortfolioKey[] = [
+  'min_variance',
+  'risk_parity',
+  'max_diversification',
+  'hrp',
+  'herc',
+  'nco',
+]
+
+/** Allocators that use neither estimate: every row is the same portfolio. */
+const IGNORES_ESTIMATES: Partial<Record<PortfolioKey, string>> = {
+  equal_weight: 'Equal weight uses no estimates at all.',
+  min_cvar: 'Minimum CVaR optimises directly on the historical daily returns.',
+  kelly: 'Growth-optimal (Kelly) optimises directly on the historical daily returns.',
+  resampled:
+    'Resampled max Sharpe re-estimates plain sample means and covariances on every resampled history.',
+}
 
 type Row = EstimatorsResponse['rows'][number]
 
@@ -162,6 +179,12 @@ export default function EstimatorsPage() {
                   are identical. Only the covariance choice can move it.
                 </p>
               )}
+              {IGNORES_ESTIMATES[method] && (
+                <p className="text-muted-foreground text-xs">
+                  {IGNORES_ESTIMATES[method]} The estimator choice cannot change it, so all twelve
+                  rows match: a useful contrast with the estimate-driven methods.
+                </p>
+              )}
             </PanelSection>
             <Separator />
             <PanelSection title="The estimators">
@@ -197,6 +220,13 @@ export default function EstimatorsPage() {
                   <dd className="text-muted-foreground">
                     The sample matrix pulled toward a simple structured target, by an amount chosen
                     from the data. Less noise, more stable weights.
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium">Denoised (Marchenko–Pastur)</dt>
+                  <dd className="text-muted-foreground">
+                    Correlation eigenvalues too small to tell from pure noise are flattened to their
+                    average. Matters most with many assets and short samples.
                   </dd>
                 </div>
               </dl>
@@ -244,9 +274,10 @@ export default function EstimatorsPage() {
                   <>
                     <p>
                       Read down the bars: same data, same optimiser, only the estimators differ.
-                      Methods that use expected returns (maximum Sharpe, minimum CVaR) usually swing
-                      the most, because average returns are estimated far less precisely than
-                      volatilities and correlations.
+                      Methods that use expected returns (maximum Sharpe, mean-variance variants)
+                      usually swing the most, because average returns are estimated far less
+                      precisely than volatilities and correlations. Methods that skip the estimates
+                      altogether (equal weight, minimum CVaR, Kelly) do not move at all.
                     </p>
                     <p>
                       The row marked "in use" is what the other pages show, set in the universe bar.

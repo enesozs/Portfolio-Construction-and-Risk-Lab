@@ -65,7 +65,7 @@ export function UniverseBar() {
   const covLabel = COV_METHODS.find((m) => m.value === universe.cov_method)?.label
 
   return (
-    <div className="border-b bg-muted/30">
+    <div data-tour="universe-bar" className="border-b bg-muted/30">
       <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5 text-sm sm:px-6">
         <div className="flex flex-wrap items-center gap-1.5">
           {universe.tickers.map((t) => (

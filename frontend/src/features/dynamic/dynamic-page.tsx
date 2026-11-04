@@ -402,7 +402,8 @@ export default function DynamicPage() {
         p.baseMode === 'custom'
           ? Object.fromEntries(assets.map((a) => [a, (p.custom[a] ?? 100 / assets.length) / 100]))
           : null,
-      off_to_cash: p.offToCash,
+      // Tilt and BL views apply a timing signal only by moving out-of-signal weight to cash.
+      off_to_cash: p.method === 'filter' ? p.offToCash : true,
       top_k: Math.min(p.topK, assets.length),
       tilt_strength: p.tilt,
       view_confidence: p.confidencePct / 100,
@@ -547,7 +548,7 @@ export default function DynamicPage() {
                     onChange={(v) => setP({ ...p, timing: v, timingParams: {} })}
                     onParams={(v) => set('timingParams', v)}
                   />
-                  {p.timing && p.method !== 'top_k' && (
+                  {p.timing && p.method === 'filter' && (
                     <Label className="justify-between">
                       Out-of-signal weight goes to cash
                       <Switch
@@ -556,6 +557,11 @@ export default function DynamicPage() {
                         onCheckedChange={(v) => set('offToCash', v)}
                       />
                     </Label>
+                  )}
+                  {p.timing && (p.method === 'tilt' || p.method === 'black_litterman') && (
+                    <p className="-mt-1 text-muted-foreground text-xs">
+                      Assets whose timing signal is out keep no weight: their share goes to cash.
+                    </p>
                   )}
                   {p.timing && p.method === 'filter' && !p.offToCash && (
                     <p className="-mt-2 text-muted-foreground text-xs">

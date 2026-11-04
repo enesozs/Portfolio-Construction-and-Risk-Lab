@@ -366,7 +366,7 @@ export default function RobustPage() {
           {turnoverData && (
             <>
               <WeightBars
-                title="Allocations"
+                title="Rebalancing allocations"
                 description="Where you are now, the target the objective would pick from scratch, and the compromise that accounts for trading."
                 guide={
                   <>

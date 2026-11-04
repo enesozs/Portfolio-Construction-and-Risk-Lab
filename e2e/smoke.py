@@ -34,6 +34,22 @@ PAGES = [
     ("/plan", "My portfolio"),
     ("/plan/goals", "Goal planner"),
     ("/report", None),
+    ("/learn", "Learn"),
+    ("/learn/start", None),
+    ("/learn/glossary", "Glossary"),
+    *[
+        (f"/learn/{chapter}{tab}", None)
+        for chapter in (
+            "01-universe",
+            "02-construction",
+            "03-dynamic",
+            "04-risk",
+            "05-validation",
+            "06-attribution",
+            "07-planning",
+        )
+        for tab in ("", "/theory")
+    ],
 ]
 
 

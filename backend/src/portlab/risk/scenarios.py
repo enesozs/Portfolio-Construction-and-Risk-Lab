@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from portlab.portfolio.metrics import performance_summary, portfolio_returns_series
+from portlab.portfolio.metrics import performance_summary
 
 HISTORICAL_CRISES: dict[str, tuple[str, str]] = {
     "Dot-com bust": ("2000-03-24", "2002-10-09"),
@@ -50,7 +50,9 @@ def replay_historical_period(
     start: str,
     end: str,
 ) -> CrisisReplay:
-    """Apply today's static weights to the assets' actual returns during a past period.
+    """Buy today's weights at the start of a past period and hold them through it.
+
+    Positions are not rebalanced: each grows with its own asset, so the weights drift.
 
     `recovery_trading_days` counts days from the trough until the portfolio regains its
     pre-crisis peak, continuing past the period end with the same drifting holdings (NaN if
@@ -72,25 +74,22 @@ def replay_historical_period(
         raise ValueError(
             "none of the portfolio's assets traded through this period: " + ", ".join(missing)
         )
-    rescaled = w[available] / float(w[available].sum())
-    p = portfolio_returns_series(period[available], rescaled)
+    held = np.array([float(w.at[a]) for a in available])
+    held = held / held.sum()
+    # Buy and hold: each position grows with its own asset, so weights drift with prices.
+    # The same holdings are followed past the window, so recovery can be measured.
+    history = returns.loc[pd.Timestamp(start) :, available].dropna(how="any")
+    growth = (1.0 + history).cumprod().to_numpy(dtype=float)
+    full = growth @ held
+    in_window = int((history.index <= pd.Timestamp(end)).sum())
+    values = full[:in_window]
+    wealth = pd.Series(values, index=history.index[:in_window])
+    p = wealth.pct_change().fillna(float(values[0]) - 1.0)
     perf = performance_summary(p)
-    wealth = (1.0 + p).cumprod()
-    peak = np.maximum.accumulate(np.concatenate([[1.0], wealth.to_numpy(dtype=float)]))[1:]
-    drawdown = pd.Series(wealth.to_numpy(dtype=float) / peak - 1.0, index=wealth.index)
+    peak = np.maximum.accumulate(np.concatenate([[1.0], values]))[1:]
+    drawdown = pd.Series(values / peak - 1.0, index=wealth.index)
     trough = int(np.argmin(drawdown.to_numpy(dtype=float)))
-    # Crisis windows usually end near the bottom, so recovery is measured on the data that
-    # follows: the same holdings, left to drift, until they regain the pre-crisis peak.
-    after = returns.loc[pd.Timestamp(end) + pd.Timedelta(days=1) :, available].dropna(how="any")
-    drifted = rescaled * (1.0 + period[available]).prod()
-    tail = (
-        float(wealth.iloc[-1])
-        * (1.0 + portfolio_returns_series(after, drifted / drifted.sum())).cumprod()
-        if len(after)
-        else pd.Series(dtype=float)
-    )
-    path = np.concatenate([wealth.to_numpy(dtype=float)[trough:], tail.to_numpy(dtype=float)])
-    recovered = np.flatnonzero(path >= peak[trough])
+    recovered = np.flatnonzero(full[trough:] >= peak[trough])
     return CrisisReplay(
         wealth=wealth,
         drawdown=drawdown,

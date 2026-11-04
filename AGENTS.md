@@ -31,7 +31,7 @@ It is an **educational research tool**, not investment advice. Priorities, in or
 
 ## 2. Current state (2026-11-03)
 
-- **All six roadmap steps are done.**
+- **All six roadmap steps are done**, plus a **Learn** course (2026-11-04).
 - **Eight areas, 21 pages**:
   - Universe: overview.
   - Construct: portfolios, estimators, Black–Litterman, tail risk, robust & turnover, risk budgets.
@@ -41,6 +41,15 @@ It is an **educational research tool**, not investment advice. Priorities, in or
   - Attribution: benchmark + Fama–French factor lab.
   - Plan: my portfolio, goal planner.
   - Report.
+- **Learn** (`/learn`), modelled on project 05:
+  - **Start here:** the shared universe, the page layout, units, chart conventions, and what the
+    numbers are and are not.
+  - **7 chapters**, each with two tabs:
+    - *Using the pages*: a tour of every page in the area (purpose, workflow, an annotated
+      screenshot with numbered regions), then experiments;
+    - *Theory*: the `docs/0N-*.md` note, rendered with KaTeX.
+  - **Glossary:** searchable, with links to pages.
+  - Every area's tab row links to its chapter ("Learn this area").
 - **Possible next steps** (not scheduled):
   - a shared `SeriesPicker` (the ≤4-line chip picker is duplicated in the compare and factor
     pages);
@@ -120,6 +129,21 @@ Same stack and conventions as 05 (Derivatives Pricing Lab) and 06 (Tessera). Cop
   - Previous results stay visible, dimmed, while refetching.
 - **API types** are generated (`make api-types`) after any pydantic schema change. Never edit
   `api-types.ts` by hand.
+- **Learn content** lives in one file per area, so areas can be edited independently:
+  - `frontend/src/content/guides/<area>.ts`: page tours. Region keys are `panel`, `stats`,
+    `universe-bar`, or a card heading (exact, or `match: 'prefix'`).
+  - `frontend/src/content/glossary/<area>.ts`: glossary terms.
+  - `frontend/src/features/learn/chapters/<id>.ts`: summary and experiments.
+  - `docs/0N-*.md`: theory.
+
+  When a page changes:
+  - Run `make learn-shots` (with `make dev` running). It re-captures
+    `frontend/public/learn/*.jpg` and `features/learn/screens.json`.
+  - Update the tour if a card heading changed. In dev, an unmatched region logs a console
+    error, which fails `make e2e`.
+  - Experiments quote control names, so re-check them after renaming a control.
+  - Each chart's own "How to read this chart" text stays inline (`guide` prop); tours explain
+    the page as a whole.
 - **Charts** follow the dataviz rules:
   - Categorical palette in `theme.ts`: eight slots assigned by universe order (`assetColor`); past
     eight, assets fold into "Other".
@@ -251,6 +275,7 @@ make e2e       # Playwright smoke over every page (needs `make dev` + Chrome)
 make lint      # ruff, pyright, tsc, oxlint, prettier
 make check     # lint + test + frontend build
 make api-types # regenerate frontend types after a schema change
+make learn-shots # re-capture Learn screenshots + region boxes (needs `make dev`)
 make serve     # built UI served by FastAPI on :8030
 ```
 

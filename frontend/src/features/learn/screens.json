@@ -1,0 +1,689 @@
+{
+  "universe-overview": {
+    "path": "/universe",
+    "width": 1463,
+    "height": 2380,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "stats",
+        "box": [24, 282, 1232, 95]
+      },
+      {
+        "key": "Growth of $1",
+        "box": [24, 401, 1232, 482]
+      },
+      {
+        "key": "Correlation of daily returns",
+        "box": [24, 907, 604, 538]
+      },
+      {
+        "key": "Risk and return by asset",
+        "box": [652, 907, 604, 538]
+      },
+      {
+        "key": "Rolling average correlation",
+        "box": [24, 1469, 1232, 422]
+      },
+      {
+        "key": "Assets",
+        "box": [24, 1915, 725, 386]
+      },
+      {
+        "key": "How trustworthy is the covariance matrix?",
+        "box": [773, 1915, 690, 386]
+      }
+    ]
+  },
+  "construct-portfolios": {
+    "path": "/construct",
+    "width": 1280,
+    "height": 2151,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "stats",
+        "box": [24, 316, 1232, 95]
+      },
+      {
+        "key": "Allocations",
+        "box": [24, 435, 1232, 434]
+      },
+      {
+        "key": "Efficient frontier",
+        "box": [24, 893, 805, 586]
+      },
+      {
+        "key": "Which portfolio fits the goal?",
+        "box": [853, 893, 403, 586]
+      },
+      {
+        "key": "Side by side",
+        "box": [24, 1503, 1232, 569]
+      }
+    ]
+  },
+  "construct-estimators": {
+    "path": "/construct/estimators",
+    "width": 1280,
+    "height": 2111,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 1715]
+      },
+      {
+        "key": "stats",
+        "box": [400, 316, 856, 111]
+      },
+      {
+        "key": "Maximum Sharpe under each estimator",
+        "box": [400, 451, 856, 502]
+      },
+      {
+        "key": "How far each asset's weight moves",
+        "box": [400, 977, 856, 410]
+      },
+      {
+        "key": "Twelve estimate sets, one allocator",
+        "box": [400, 1411, 856, 620]
+      }
+    ]
+  },
+  "construct-black-litterman": {
+    "path": "/construct/black-litterman",
+    "width": 1280,
+    "height": 1963,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 1567]
+      },
+      {
+        "key": "stats",
+        "box": [400, 316, 856, 111]
+      },
+      {
+        "key": "Expected returns",
+        "box": [400, 451, 856, 470]
+      },
+      {
+        "key": "Weights",
+        "box": [400, 945, 856, 470]
+      },
+      {
+        "key": "Where the prior comes from",
+        "box": [400, 1439, 856, 404]
+      }
+    ]
+  },
+  "construct-tail-risk": {
+    "path": "/construct/tail-risk",
+    "width": 1280,
+    "height": 1311,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 915]
+      },
+      {
+        "key": "stats",
+        "box": [400, 316, 856, 95]
+      },
+      {
+        "key": "Allocations",
+        "box": [400, 435, 856, 470]
+      },
+      {
+        "key": "Tail loss versus volatility",
+        "box": [400, 929, 856, 303]
+      }
+    ]
+  },
+  "construct-robust": {
+    "path": "/construct/robust",
+    "width": 1280,
+    "height": 2186,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 1790]
+      },
+      {
+        "key": "Allocations",
+        "box": [400, 412, 856, 450]
+      },
+      {
+        "key": "Expected numbers",
+        "box": [400, 886, 856, 303]
+      },
+      {
+        "key": "Rebalancing allocations",
+        "box": [400, 1350, 856, 450]
+      },
+      {
+        "key": "What the trade buys",
+        "box": [400, 1824, 856, 283]
+      }
+    ]
+  },
+  "construct-risk-budget": {
+    "path": "/construct/risk-budget",
+    "width": 1280,
+    "height": 1017,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 621]
+      },
+      {
+        "key": "stats",
+        "box": [400, 316, 856, 95]
+      },
+      {
+        "key": "Budget, risk share and capital",
+        "box": [400, 435, 856, 502]
+      }
+    ]
+  },
+  "dynamic-allocation": {
+    "path": "/dynamic",
+    "width": 1280,
+    "height": 3344,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 302, 352, 2962]
+      },
+      {
+        "key": "stats",
+        "box": [400, 302, 856, 127]
+      },
+      {
+        "key": "Growth of $1",
+        "box": [400, 585, 856, 502]
+      },
+      {
+        "key": "Drawdown",
+        "box": [400, 1111, 416, 490]
+      },
+      {
+        "key": "Holdings over time",
+        "box": [840, 1111, 416, 490]
+      },
+      {
+        "key": "When each asset was in",
+        "box": [400, 1625, 856, 418]
+      },
+      {
+        "key": "Side by side",
+        "box": [400, 2067, 856, 301]
+      },
+      {
+        "key": "Robustness: the neighbours you could have picked",
+        "box": [400, 2392, 856, 438]
+      },
+      {
+        "key": "What the strategy holds now (14 Oct 2026)",
+        "box": [400, 2854, 499, 410]
+      },
+      {
+        "key": "Today's signals",
+        "box": [923, 2854, 333, 410]
+      }
+    ]
+  },
+  "risk-decomposition": {
+    "path": "/risk",
+    "width": 1280,
+    "height": 2156,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 1760]
+      },
+      {
+        "key": "stats",
+        "box": [400, 316, 856, 127]
+      },
+      {
+        "key": "Capital weight vs risk contribution",
+        "box": [400, 467, 856, 470]
+      },
+      {
+        "key": "Where the volatility comes from",
+        "box": [400, 961, 545, 502]
+      },
+      {
+        "key": "Marginal diversification",
+        "box": [969, 961, 287, 502]
+      },
+      {
+        "key": "Weights after targeting volatility",
+        "box": [400, 1606, 856, 470]
+      }
+    ]
+  },
+  "risk-stress": {
+    "path": "/risk/stress",
+    "width": 1280,
+    "height": 1549,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 1153]
+      },
+      {
+        "key": "stats",
+        "box": [400, 316, 856, 95]
+      },
+      {
+        "key": "Portfolio volatility as correlations rise",
+        "box": [400, 435, 856, 470]
+      },
+      {
+        "key": "Contribution to the scenario return",
+        "box": [400, 1047, 856, 422]
+      }
+    ]
+  },
+  "risk-crises": {
+    "path": "/risk/crises",
+    "width": 1280,
+    "height": 1423,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 1027]
+      },
+      {
+        "key": "stats",
+        "box": [400, 783, 856, 95]
+      },
+      {
+        "key": "Historical crises, replayed",
+        "box": [400, 316, 856, 443]
+      },
+      {
+        "key": "Growth of $1: Dot-com bust",
+        "box": [400, 901, 416, 442]
+      },
+      {
+        "key": "Drawdown",
+        "box": [840, 901, 416, 442]
+      }
+    ]
+  },
+  "risk-var": {
+    "path": "/risk/var",
+    "width": 1280,
+    "height": 2025,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 1629]
+      },
+      {
+        "key": "stats",
+        "box": [400, 316, 856, 111]
+      },
+      {
+        "key": "Four VaR models, tested out of sample",
+        "box": [400, 451, 856, 348]
+      },
+      {
+        "key": "Daily losses against the Filtered historical VaR",
+        "box": [400, 823, 856, 608]
+      },
+      {
+        "key": "Where the tail risk comes from",
+        "box": [400, 1455, 499, 490]
+      },
+      {
+        "key": "Component VaR and ES",
+        "box": [923, 1455, 333, 490]
+      }
+    ]
+  },
+  "risk-simulation": {
+    "path": "/risk/simulation",
+    "width": 1280,
+    "height": 1794,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 336, 352, 1378]
+      },
+      {
+        "key": "stats",
+        "box": [400, 336, 856, 282]
+      },
+      {
+        "key": "Range of simulated wealth",
+        "box": [400, 682, 856, 566]
+      },
+      {
+        "key": "Return at the horizon",
+        "box": [400, 1272, 416, 442]
+      },
+      {
+        "key": "Worst drawdown along the way",
+        "box": [840, 1272, 416, 442]
+      }
+    ]
+  },
+  "validate-walk-forward": {
+    "path": "/validate",
+    "width": 1280,
+    "height": 1909,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 1513]
+      },
+      {
+        "key": "stats",
+        "box": [400, 316, 856, 95]
+      },
+      {
+        "key": "Growth of $1, out of sample",
+        "box": [400, 435, 856, 502]
+      },
+      {
+        "key": "Out-of-sample performance",
+        "box": [400, 961, 856, 303]
+      },
+      {
+        "key": "Predicted vs realised volatility",
+        "box": [400, 1287, 416, 542]
+      },
+      {
+        "key": "Target weights over time",
+        "box": [840, 1287, 416, 542]
+      }
+    ]
+  },
+  "validate-rebalancing": {
+    "path": "/validate/rebalancing",
+    "width": 1280,
+    "height": 1358,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 962]
+      },
+      {
+        "key": "stats",
+        "box": [400, 316, 856, 95]
+      },
+      {
+        "key": "Growth of $1 under each rule",
+        "box": [400, 435, 856, 482]
+      },
+      {
+        "key": "Policies side by side",
+        "box": [400, 941, 856, 338]
+      }
+    ]
+  },
+  "validate-bootstrap": {
+    "path": "/validate/bootstrap",
+    "width": 1280,
+    "height": 1450,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 1054]
+      },
+      {
+        "key": "stats",
+        "box": [400, 316, 856, 95]
+      },
+      {
+        "key": "How much each weight moves across resamples",
+        "box": [400, 435, 856, 502]
+      },
+      {
+        "key": "Weight distribution per asset",
+        "box": [400, 961, 856, 410]
+      }
+    ]
+  },
+  "validate-compare": {
+    "path": "/validate/compare",
+    "width": 1280,
+    "height": 3094,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 2698]
+      },
+      {
+        "key": "stats",
+        "box": [400, 316, 856, 95]
+      },
+      {
+        "key": "Every method, out of sample",
+        "box": [400, 435, 856, 588]
+      },
+      {
+        "key": "Growth of $1, out of sample",
+        "box": [400, 1046, 856, 572]
+      },
+      {
+        "key": "Probability of backtest overfitting",
+        "box": [400, 1642, 856, 198]
+      },
+      {
+        "key": "Where the in-sample winner landed",
+        "box": [400, 1864, 416, 490]
+      },
+      {
+        "key": "How much of the winner's Sharpe survived",
+        "box": [840, 1864, 416, 490]
+      },
+      {
+        "key": "Who won in sample",
+        "box": [400, 2378, 856, 266]
+      },
+      {
+        "key": "Covariance estimators, out of sample",
+        "box": [400, 2668, 856, 346]
+      }
+    ]
+  },
+  "attribution-benchmark": {
+    "path": "/attribution",
+    "width": 1280,
+    "height": 3656,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 302, 352, 3274]
+      },
+      {
+        "key": "stats",
+        "box": [400, 302, 856, 111]
+      },
+      {
+        "key": "Growth of $1: Maximum Sharpe vs SPY",
+        "box": [400, 437, 856, 454]
+      },
+      {
+        "key": "Return contribution by asset",
+        "box": [400, 915, 856, 442]
+      },
+      {
+        "key": "Factor exposures",
+        "box": [400, 1616, 856, 470]
+      },
+      {
+        "key": "Exposure statistics",
+        "box": [400, 2110, 856, 408]
+      },
+      {
+        "key": "Where the risk comes from",
+        "box": [400, 2542, 416, 568]
+      },
+      {
+        "key": "Exposures over time",
+        "box": [840, 2542, 416, 568]
+      },
+      {
+        "key": "Exposures by asset",
+        "box": [400, 3134, 856, 442]
+      }
+    ]
+  },
+  "report-research": {
+    "path": "/report",
+    "width": 1280,
+    "height": 1468,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 302, 352, 1086]
+      },
+      {
+        "key": "Executive Summary",
+        "box": [400, 302, 856, 1086]
+      }
+    ]
+  },
+  "plan-holdings": {
+    "path": "/plan",
+    "width": 1280,
+    "height": 1784,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 1388]
+      },
+      {
+        "key": "stats",
+        "box": [400, 316, 856, 111]
+      },
+      {
+        "key": "Weights now, target and after trading",
+        "box": [400, 451, 856, 450]
+      },
+      {
+        "key": "What changes",
+        "box": [400, 925, 856, 281]
+      },
+      {
+        "key": "Orders",
+        "box": [400, 1230, 856, 475]
+      }
+    ]
+  },
+  "plan-goals": {
+    "path": "/plan/goals",
+    "width": 1280,
+    "height": 1945,
+    "regions": [
+      {
+        "key": "universe-bar",
+        "box": [0, 57, 1280, 49]
+      },
+      {
+        "key": "panel",
+        "box": [24, 316, 352, 1549]
+      },
+      {
+        "key": "stats",
+        "box": [400, 316, 856, 111]
+      },
+      {
+        "key": "Wealth over the plan",
+        "box": [400, 451, 856, 566]
+      },
+      {
+        "key": "Running out of money",
+        "box": [400, 1041, 416, 462]
+      },
+      {
+        "key": "Sequence-of-returns risk",
+        "box": [840, 1041, 416, 462]
+      }
+    ]
+  }
+}

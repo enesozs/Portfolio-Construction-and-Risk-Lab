@@ -12,5 +12,7 @@ export default defineConfig({
     // FastAPI runs on :8030 during development; the browser only talks to Vite.
     port: 5183,
     proxy: { '/api': 'http://127.0.0.1:8030' },
+    // The Learn chapters import the theory notes from ../docs.
+    fs: { allow: ['..'] },
   },
 })

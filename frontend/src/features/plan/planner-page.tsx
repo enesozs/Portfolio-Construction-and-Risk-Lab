@@ -491,7 +491,7 @@ export default function PlannerPage() {
                   />
                   <WeightBars
                     title="Sequence-of-returns risk"
-                    description="Success rate grouped by the portfolio's return over the first five years of retirement, from the worst fifth to the best."
+                    description="Success rate grouped by the portfolio's nominal return over the first five years of retirement, from the worst fifth to the best."
                     guide={
                       <>
                         <p>

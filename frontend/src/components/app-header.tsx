@@ -11,7 +11,10 @@ import { cn } from '@/lib/utils'
 import { AREAS } from '@/areas'
 
 // One section per research area (roadmap in AGENTS.md).
-const SECTIONS = AREAS.map((a) => ({ label: a.label, to: `/${a.path}` }))
+const SECTIONS = [
+  ...AREAS.map((a) => ({ label: a.label, to: `/${a.path}` })),
+  { label: 'Learn', to: '/learn' },
+]
 
 function ApiStatus() {
   const health = useQuery({

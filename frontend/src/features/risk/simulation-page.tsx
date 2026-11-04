@@ -347,9 +347,11 @@ export default function SimulationPage() {
   return (
     <>
       <PageHeader title="Monte Carlo simulation">
-        Thousands of possible futures for the portfolio, simulated asset by asset. Expected returns
-        and the covariance come from the shared estimates, so the simulation can only be as right as
-        they are; the point is to see the spread of outcomes, not to predict one.
+        Thousands of possible futures for the portfolio, simulated asset by asset. The normal,
+        Student-t and t-copula models take expected returns and the covariance from the shared
+        estimates; the bootstrap and regime models replay or fit the history itself, means included.
+        Either way the simulation is only as right as its inputs: the point is to see the spread of
+        outcomes, not to predict one.
       </PageHeader>
       <div className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
         <aside>

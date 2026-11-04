@@ -14,7 +14,10 @@ export function Stat({ label, value, hint }: { label: string; value: string; hin
 /** Hairline-separated tiles; pass the column classes for the breakpoints you need. */
 export function StatGrid({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <div className={cn('grid gap-px overflow-hidden rounded-xl border bg-border', className)}>
+    <div
+      data-tour="stats"
+      className={cn('grid gap-px overflow-hidden rounded-xl border bg-border', className)}
+    >
       {children}
     </div>
   )

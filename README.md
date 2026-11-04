@@ -28,7 +28,8 @@ The project is built around one question:
 
 - [Application overview](#application-overview)
 - Areas: [Universe](#universe) · [Construct](#construct) · [Dynamic](#dynamic) · [Risk](#risk) ·
-  [Validate](#validate) · [Attribution](#attribution) · [Plan](#plan) · [Report](#report)
+  [Validate](#validate) · [Attribution](#attribution) · [Plan](#plan) · [Report](#report) ·
+  [Learn](#learn)
 - [Correctness](#correctness)
 - [Architecture](#architecture)
 - [Technology](#technology)
@@ -220,6 +221,21 @@ into cash.
 A Markdown research summary for any portfolio, downloadable. It runs its own bootstrap,
 walk-forward, stress, crisis and benchmark analyses, so the same universe always produces the
 same report.
+
+## Learn
+
+An in-app course through the lab:
+- **Start here:** the shared universe, the layout every page uses, units, chart conventions,
+  and what the numbers mean (and don't).
+- **Seven chapters,** following how a portfolio is built: universe and estimation,
+  construction, dynamic allocation, risk, validation, attribution and reporting, planning.
+  Each chapter has two tabs:
+  - **Using the pages:** every page explained on an annotated screenshot, with guided
+    experiments;
+  - **Theory:** the ideas and the math behind them.
+- **A searchable glossary.**
+
+Every area links to its chapter.
 
 ---
 

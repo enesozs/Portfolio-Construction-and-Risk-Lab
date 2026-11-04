@@ -176,6 +176,7 @@ const ESTIMATOR_LABELS: Record<string, string> = {
   sample: 'Sample',
   ledoit_wolf: 'Ledoit–Wolf',
   ewma: 'EWMA',
+  denoised: 'Denoised (Marchenko–Pastur)',
 }
 
 function DiagnosticsTable({ data }: { data: OverviewResponse }) {

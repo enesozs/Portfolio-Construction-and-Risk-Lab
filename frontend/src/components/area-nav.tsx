@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router'
+import { BookOpenIcon } from 'lucide-react'
+import { Link, NavLink } from 'react-router'
 import {
   segmentedControlItemVariants,
   segmentedControlRootClassName,
@@ -15,27 +16,49 @@ export interface AreaTab {
 
 const tabClassName = segmentedControlItemVariants({ state: 'current' })
 
-/** An area's page tabs. */
-export function AreaNav({ label, tabs }: { label: string; tabs: AreaTab[] }) {
+/** An area's page tabs (when it has several), with a link to the matching Learn chapter. */
+export function AreaNav({
+  label,
+  tabs,
+  chapter,
+}: {
+  label: string
+  tabs: AreaTab[]
+  chapter?: string
+}) {
+  if (tabs.length < 2 && !chapter) return null
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-      <nav
-        aria-label={label}
-        className={`${segmentedControlRootClassName} max-w-full overflow-x-auto`}
-      >
-        {tabs.map((tab) => (
-          <NavLink
-            key={tab.to}
-            to={tab.to}
-            end={tab.end}
-            className={tabClassName}
-            onMouseEnter={() => void tab.preload()}
-            onFocus={() => void tab.preload()}
-          >
-            {tab.label}
-          </NavLink>
-        ))}
-      </nav>
+      {tabs.length > 1 ? (
+        <nav
+          aria-label={label}
+          className={`${segmentedControlRootClassName} max-w-full overflow-x-auto`}
+        >
+          {tabs.map((tab) => (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              end={tab.end}
+              className={tabClassName}
+              onMouseEnter={() => void tab.preload()}
+              onFocus={() => void tab.preload()}
+            >
+              {tab.label}
+            </NavLink>
+          ))}
+        </nav>
+      ) : (
+        <span />
+      )}
+      {chapter && (
+        <Link
+          to={`/learn/${chapter}`}
+          className="inline-flex items-center gap-1.5 text-muted-foreground text-sm hover:text-foreground"
+        >
+          <BookOpenIcon className="size-4" aria-hidden="true" />
+          Learn this area
+        </Link>
+      )}
     </div>
   )
 }
