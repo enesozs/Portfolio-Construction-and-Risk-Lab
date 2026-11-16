@@ -19,3 +19,9 @@ frontend/dist/
 !.vscode/settings.json
 !.vscode/extensions.json
 .idea/
+
+# Agent instructions and internal working notes (kept local)
+AGENTS.md
+CLAUDE.md
+CLAUDE.local.md
+.claude/
