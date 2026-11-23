@@ -4,8 +4,7 @@
     "api": {
       "root": "backend",
       "framework": "fastapi",
-      "entrypoint": "src.portlab_api.main:app",
-      "installCommand": "uv pip install '.[api]'"
+      "entrypoint": "vercel_app:app"
     },
     "web": {
       "root": "frontend",

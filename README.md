@@ -14,6 +14,8 @@ a FastAPI backend and explored through a React web app.
 ![Tests](https://img.shields.io/badge/tests-pytest-0A9EDC?logo=pytest&logoColor=white)
 [![License](https://img.shields.io/badge/license-MIT-2EA44F)](LICENSE)
 
+**Live app:** [portfolio-construction-risk-lab.vercel.app](https://portfolio-construction-risk-lab.vercel.app)
+
 > **Educational research tool.** Nothing here is investment advice. Expected returns and
 > covariances are estimates from history; backtests and simulations are conditional on them.
 
@@ -332,7 +334,10 @@ API documentation is at http://localhost:8030/docs while the API runs.
 - **Docker / Render:** the `Dockerfile` builds the web app and serves it from the API on `$PORT`;
   `render.yaml` is a ready Render Blueprint.
 - **Vercel:** `vercel.json` defines two services: the Vite site, and the FastAPI app as a Python
-  function under `/api`.
+  function under `/api`. Vercel installs the core dependencies from `pyproject.toml` (cvxpy
+  without its bundled solvers, plus Clarabel, which keeps the function within the size limit),
+  and `backend/vercel_app.py` puts the `src/` layout on the import path. Pushes to `main`
+  deploy automatically.
 
 ## Methodological notes
 
